@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/firebase/auth-hook";
 import { updateProfile } from "@/lib/firebase/user-profile";
 import { readClaimsByAuthor, readUserSaves, readClaim, type ClaimDoc, type SaveDoc } from "@/lib/community/firestore";
 import Avatar from "@/components/proofmedia/Avatar";
+import ProgressPanel from "@/components/proofmedia/ProgressPanel";
 
 type Tab = "overview" | "claims" | "saved" | "settings";
 
@@ -57,6 +58,7 @@ export default function ProfileSelfRoute() {
       </aside>
 
       <div className="space-y-4 min-w-0">
+        {tab === "overview" && <ProgressPanel />}
         {tab === "overview" && <OverviewPanel uid={user.uid} />}
         {tab === "claims"   && <MyClaimsPanel uid={user.uid} />}
         {tab === "saved"    && <SavedPanel uid={user.uid} />}

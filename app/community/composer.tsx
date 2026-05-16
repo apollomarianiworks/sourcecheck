@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { createClaim, attachSourceMeshSummary, ClientError, type SourceMeshSnapshot } from "@/lib/community/firestore";
 import {
+  checkDuplicateContent,
+  checkRepeatedLinks,
+  recordContentFingerprint,
+  recordLinkFingerprints,
+} from "@/lib/community/restrictions";
+import { trackProofmediaEvent } from "@/lib/proofmedia/analytics";
+import {
   ALLOWED_CATEGORIES, ALLOWED_VISIBILITIES,
   MAX_BODY_LENGTH, MAX_EVIDENCE_LINKS, MAX_TAGS, MAX_TITLE_LENGTH, MIN_TITLE_LENGTH,
   validateClaim,
@@ -42,6 +49,7 @@ export default function ClaimComposer({ authorUsername, authorDisplayName, autho
   const [progress, setProgress] = useState<string | null>(null);
 
   const tags = parseTags(tagsInput);
+  const unsupportedDraft = evidenceUrls.length === 0;
 
   function addEvidenceUrl() {
     const u = evidenceInput.trim();
@@ -63,6 +71,10 @@ export default function ClaimComposer({ authorUsername, authorDisplayName, autho
     setError(null);
     const v = validateClaim({ title, body, category, tags, evidenceUrls, visibility });
     if (!v.ok) { setError(v.message ?? "Invalid claim."); return; }
+    const duplicate = checkDuplicateContent("claim", `${title}\n${body}`);
+    if (!duplicate.allowed) { setError(duplicate.reason ?? "Duplicate content blocked."); return; }
+    const repeatedLinks = checkRepeatedLinks(evidenceUrls);
+    if (!repeatedLinks.allowed) { setError(repeatedLinks.reason ?? "Repeated links blocked."); return; }
 
     setBusy(true);
     setProgress("Saving…");
@@ -101,6 +113,13 @@ export default function ClaimComposer({ authorUsername, authorDisplayName, autho
         }
       }
 
+      recordContentFingerprint("claim", `${title}\n${body}`);
+      recordLinkFingerprints(evidenceUrls);
+      trackProofmediaEvent("post_created", {
+        category,
+        evidenceCount: evidenceUrls.length,
+        sourceMeshRequested: runMesh,
+      });
       onCreated(id);
     } catch (e) {
       if (e instanceof ClientError) setError(e.message);
@@ -185,6 +204,12 @@ export default function ClaimComposer({ authorUsername, authorDisplayName, autho
           </ul>
         )}
       </Field>
+
+      {unsupportedDraft && (
+        <div className="rounded border border-verdict-amberSoft bg-verdict-amberSoft/40 p-2 text-[12px] text-verdict-amber">
+          Soft warning: unsupported claims are allowed as questions or evidence requests, but they are weaker. Add a primary source, article, court record, agency page, study, or social URL when you can.
+        </div>
+      )}
 
       <label className="flex items-center gap-2 text-[12.5px] text-ink-body">
         <input type="checkbox" checked={runMesh} onChange={(e) => setRunMesh(e.target.checked)} />

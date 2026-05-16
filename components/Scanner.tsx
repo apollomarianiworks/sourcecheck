@@ -1,11 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { CheckMode, CheckResult, HistoryEntry, ScanDepth } from "@/lib/types";
 import { validateInput } from "@/lib/validate";
 import { appendHistory } from "@/lib/history";
 import { detectMode } from "@/lib/detect-mode";
+import {
+  PROOFBASE_SEARCH_MODES,
+  SEARCH_CATEGORY_SUGGESTIONS,
+  SEARCH_PLACEHOLDERS,
+  classifyProofbaseSearch,
+  getSearchModeConfig,
+  searchModePlan,
+  type ProofbaseSearchMode,
+} from "@/lib/search/search-brain";
+import { appendRecentWorkspace, saveWorkspaceSession } from "@/lib/workspace/sessions";
 
 import VerdictBadge from "./VerdictBadge";
 import ScoreDisplay from "./ScoreDisplay";
@@ -37,6 +47,7 @@ import AskFollowUpPanel from "./AskFollowUpPanel";
 import ProofbaseAssistant from "./ProofbaseAssistant";
 import TrainingFeedback from "./TrainingFeedback";
 import SearchPlanPanel from "./SearchPlanPanel";
+import InstallProofbaseButton from "./pwa/InstallProofbaseButton";
 
 const STATUS_LINES = [
   "Understanding the query...",
@@ -55,6 +66,7 @@ const MODE_HINT: Record<CheckMode, string> = {
 export default function Scanner() {
   const [input, setInput] = useState("");
   const [depth, setDepth] = useState<ScanDepth>("quick");
+  const [searchMode, setSearchMode] = useState<ProofbaseSearchMode>("quick");
   const [loading, setLoading] = useState(false);
   const [statusLine, setStatusLine] = useState(0);
   const [result, setResult] = useState<CheckResult | null>(null);
@@ -66,6 +78,17 @@ export default function Scanner() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const detectedMode: CheckMode = input.trim() ? detectMode(input) : "claim";
+  const modeConfig = getSearchModeConfig(searchMode);
+  const effectiveDepth: ScanDepth = searchMode === "quick" ? depth : modeConfig.depth;
+  const modePlan = useMemo(() => searchModePlan(searchMode), [searchMode]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    const mode = params.get("mode") as ProofbaseSearchMode | null;
+    if (q) setInput(q);
+    if (mode && PROOFBASE_SEARCH_MODES.some((item) => item.id === mode)) setSearchMode(mode);
+  }, []);
 
   useEffect(() => {
     // First-run hint logic — show until the user actually scans something
@@ -79,9 +102,13 @@ export default function Scanner() {
       setValidationError(null);
       return;
     }
+    if (searchMode === "quick") {
+      const suggested = classifyProofbaseSearch(input);
+      if (suggested !== "quick" && input.length > 16) setSearchMode(suggested);
+    }
     const v = validateInput(detectedMode, input);
     setValidationError(v.ok ? null : v.message ?? null);
-  }, [input, detectedMode]);
+  }, [input, detectedMode, searchMode]);
 
   async function handleScan() {
     if (loading) return;
@@ -105,7 +132,7 @@ export default function Scanner() {
       const res = await fetch("/api/source-mesh/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, input: trimmed, depth }),
+        body: JSON.stringify({ mode, input: trimmed, depth: effectiveDepth, searchMode }),
       });
 
       let data: { error?: string } & Partial<CheckResult>;
@@ -124,6 +151,7 @@ export default function Scanner() {
         const r = data as CheckResult;
         setResult(r);
         appendHistory(r);
+        appendRecentWorkspace(r, searchMode);
         setHistoryKey((k) => k + 1);
         try { window.localStorage.setItem("proofbase.firstrun.dismissed", "1"); } catch { /* ignore */ }
         setHasUsedToolBefore(true);
@@ -157,35 +185,83 @@ export default function Scanner() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function saveCurrentSearch() {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    saveWorkspaceSession({
+      query: trimmed,
+      mode: searchMode,
+      evidenceCount: result?.evidence.length,
+      sourceQualityScore: result?.sourceQualityScore,
+    });
+    setHistoryKey((k) => k + 1);
+  }
+
   const canScan = input.trim().length > 0 && !loading && !validationError;
 
   return (
     <div className="space-y-10">
       {/* ── Hero ── */}
-      <section aria-labelledby="hero-title" className="text-center space-y-4 pt-8 md:pt-14 pb-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-brand text-white rounded-md text-2xl font-bold mx-auto mb-1" aria-hidden="true">
+      <section aria-labelledby="hero-title" className="space-y-5 pt-6 md:pt-10 pb-2">
+        <div className="mx-auto max-w-3xl text-center space-y-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-line bg-soft px-3 py-1 text-[12px] text-ink-muted">
+            <span className="h-2 w-2 rounded-full bg-brand" aria-hidden="true" />
+            Proofbase Search / SourceMesh Research OS
+          </div>
+          <h1 id="hero-title" className="font-display text-[34px] md:text-[48px] font-bold text-ink leading-tight">
+            Search the web like evidence matters.
+          </h1>
+          <p className="text-[15px] md:text-base text-ink-body max-w-2xl mx-auto">
+            Quick search when you need speed. Research Mode when you need source quality,
+            uncertainty, debate context, timelines, and transparent evidence.
+          </p>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <InstallProofbaseButton />
+            <Link href="/how-it-works" className="text-[13px] text-link hover:underline">
+              How it works
+            </Link>
+          </div>
+        </div>
+        <div className="hidden" aria-hidden="true">
           ✓
         </div>
-        <h1 id="hero-title" className="font-display text-[34px] md:text-[44px] font-bold text-ink leading-tight">
+        <h1 className="hidden">
           <span className="text-brand">Proof</span>base
         </h1>
-        <p className="text-[15px] md:text-base text-ink-body max-w-prose mx-auto">
+        <p className="hidden">
           The internet&apos;s research and debate operating system.
         </p>
 
         {/* Search box */}
-        <div className="max-w-2xl mx-auto pt-3 space-y-2 text-left">
+        <div className="max-w-3xl mx-auto pt-1 space-y-3 text-left">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1" aria-label="Search modes">
+            {PROOFBASE_SEARCH_MODES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSearchMode(item.id)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                  searchMode === item.id
+                    ? "border-brand bg-brand text-white"
+                    : "border-line bg-page text-ink-muted hover:border-brand hover:text-brand"
+                }`}
+                title={item.description}
+              >
+                {item.shortLabel}
+              </button>
+            ))}
+          </div>
           <label htmlFor="hero-search" className="sr-only">
             Search a claim, URL, or domain
           </label>
           <div
             className={`
-              flex items-start gap-2 rounded border-2 bg-page p-2.5
+              flex items-start gap-2 rounded-lg border-2 bg-page p-3 shadow-sm
               ${validationError ? "border-verdict-red" : "border-line focus-within:border-brand"}
               transition-colors
             `}
           >
-            <span className="text-ink-dim mt-1 select-none shrink-0" aria-hidden="true">🔍</span>
+            <span className="text-ink-dim mt-1 select-none shrink-0 text-[12px]" aria-hidden="true">Search</span>
             <textarea
               ref={inputRef}
               id="hero-search"
@@ -193,7 +269,7 @@ export default function Scanner() {
               rows={1}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder='Paste a claim, article URL, social link, or domain... e.g. "is the MrBeast lottery thing illegal?"'
+              placeholder={SEARCH_PLACEHOLDERS[searchMode]}
               disabled={loading}
               className="flex-1 resize-none bg-transparent text-[15px] text-ink placeholder-ink-dim disabled:opacity-50 leading-relaxed border-0 outline-none focus:ring-0"
               style={{ minHeight: "1.6rem", maxHeight: "8rem" }}
@@ -218,13 +294,44 @@ export default function Scanner() {
 
           <div className="flex items-center justify-between gap-2 text-[12px] flex-wrap">
             <div id="search-hint" className="text-ink-muted">
-              {input.trim() ? MODE_HINT[detectedMode] : "Press Enter to check"}
+              {input.trim() ? `${modeConfig.label}: ${MODE_HINT[detectedMode]}` : modeConfig.description}
             </div>
             {validationError && <div className="text-verdict-red" role="alert">{validationError}</div>}
           </div>
 
-          <div className="pt-1.5">
-            <ScanDepthToggle depth={depth} onChange={setDepth} disabled={loading} />
+          <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
+            <ScanDepthToggle depth={effectiveDepth} onChange={setDepth} disabled={loading || searchMode !== "quick"} />
+            <button
+              type="button"
+              onClick={saveCurrentSearch}
+              disabled={!input.trim()}
+              className="rounded border border-line px-3 py-1.5 text-[12px] text-ink-muted hover:border-brand hover:text-brand disabled:opacity-50"
+            >
+              Save search
+            </button>
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-[1fr_240px]">
+            <div className="flex flex-wrap gap-1.5">
+              {SEARCH_CATEGORY_SUGGESTIONS.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    setInput((current) => current.trim() ? `${current.trim()} ${label.toLowerCase()}` : label);
+                    inputRef.current?.focus();
+                  }}
+                  className="rounded-full border border-line bg-soft px-2.5 py-1 text-[11px] text-ink-muted hover:border-brand hover:text-brand"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="rounded border border-line-soft bg-soft p-2 text-[11px] text-ink-muted leading-relaxed">
+              {modePlan.slice(0, 3).map((line) => (
+                <div key={line}>{line}</div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -287,7 +394,7 @@ export default function Scanner() {
       )}
 
       {/* Result */}
-      {result && !loading && <ResultLayout result={result} onPickRelated={(q) => { setInput(q); inputRef.current?.focus(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+      {result && !loading && <ResultLayout result={result} searchMode={searchMode} onPickRelated={(q) => { setInput(q); inputRef.current?.focus(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
 
       {/* Educational micro-glossary footer — only show on hero state */}
       {!loading && !result && (
@@ -337,7 +444,122 @@ function Section({
   );
 }
 
-function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRelated: (q: string) => void }) {
+function UniversalSearchTabs({
+  result,
+  activeTab,
+  onChange,
+}: {
+  result: CheckResult;
+  activeTab: "sources" | "evidence" | "timeline" | "discussion";
+  onChange: (tab: "sources" | "evidence" | "timeline" | "discussion") => void;
+}) {
+  const tabs = [
+    { id: "sources" as const, label: "Sources", count: result.sourceCoverage.length },
+    { id: "evidence" as const, label: "Evidence", count: result.evidence.length },
+    { id: "timeline" as const, label: "Timeline", count: result.evidence.filter((item) => item.date).length },
+    { id: "discussion" as const, label: "Discussion", count: result.sourceMesh?.social ? 1 : 0 },
+  ];
+  const datedEvidence = result.evidence
+    .filter((item) => item.date)
+    .sort((a, b) => Date.parse(b.date ?? "") - Date.parse(a.date ?? ""));
+  const sourceGroups = Array.from(new Set(result.evidence.map((item) => item.source)));
+
+  return (
+    <section className="card overflow-hidden">
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-line-soft bg-soft px-2 py-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onChange(tab.id)}
+            className={`rounded px-3 py-1.5 text-[12px] ${activeTab === tab.id ? "bg-page text-brand border border-line" : "text-ink-muted hover:text-ink"}`}
+          >
+            {tab.label}
+            <span className="ml-1 text-ink-dim">{tab.count}</span>
+          </button>
+        ))}
+      </div>
+      <div className="p-3">
+        {activeTab === "sources" && (
+          <div className="grid gap-2 md:grid-cols-2">
+            {result.sourceCoverage.map((source) => (
+              <div key={source.adapter} className="rounded border border-line-soft bg-page p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-medium text-ink">{source.name}</span>
+                  <span className="rounded bg-section px-1.5 py-0.5 text-[11px] text-ink-muted">{source.status}</span>
+                </div>
+                <div className="mt-1 text-[12px] text-ink-muted">
+                  {source.itemCount} result{source.itemCount === 1 ? "" : "s"}
+                  {source.requiresKey ? " / optional API key" : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "evidence" && (
+          <div className="space-y-2">
+            <div className="text-[12px] text-ink-muted">Source filters</div>
+            <div className="flex flex-wrap gap-1.5">
+              {sourceGroups.length > 0 ? sourceGroups.map((source) => (
+                <span key={source} className="rounded-full border border-line bg-soft px-2 py-1 text-[11px] text-ink-muted">
+                  {source}
+                </span>
+              )) : (
+                <span className="text-[12px] text-ink-muted">No evidence filters available until results are returned.</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "timeline" && (
+          <div className="space-y-2">
+            {datedEvidence.length > 0 ? datedEvidence.slice(0, 8).map((item) => (
+              <div key={`${item.url}-${item.date}`} className="grid gap-2 rounded border border-line-soft bg-page p-2 md:grid-cols-[120px_1fr]">
+                <div className="text-[12px] font-mono-tight text-ink-muted">{item.date}</div>
+                <div>
+                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-[13px] text-link hover:underline">{item.title}</a>
+                  <div className="text-[11px] text-ink-dim">{item.publisher}</div>
+                </div>
+              </div>
+            )) : (
+              <p className="text-[12px] text-ink-muted">No dated evidence was returned for a timeline view.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === "discussion" && (
+          <div className="space-y-2 text-[13px] text-ink-body">
+            {result.sourceMesh?.social ? (
+              <>
+                <p>{result.sourceMesh.social.claimEvidenceNote}</p>
+                <p className="text-[12px] text-ink-muted">
+                  Social platform: {result.sourceMesh.social.metadata.platform}. Social context is shown separately from evidence.
+                </p>
+              </>
+            ) : (
+              <p className="text-ink-muted">
+                No linked ProofMedia or public social context was returned for this search. Evidence above remains separate from opinion.
+              </p>
+            )}
+            <Link href="/community" className="text-[12px] text-link hover:underline">Open ProofMedia community</Link>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ResultLayout({
+  result,
+  searchMode,
+  onPickRelated,
+}: {
+  result: CheckResult;
+  searchMode: ProofbaseSearchMode;
+  onPickRelated: (q: string) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"sources" | "evidence" | "timeline" | "discussion">("sources");
   const claimSummary = result.input.length > 200
     ? result.input.slice(0, 200).trim() + "…"
     : result.input;
@@ -349,6 +571,7 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
       .filter((v) => v.query.trim() !== result.input.trim() && v.resultCount > 0)
       .map((v) => v.query)
   )).slice(0, 4);
+  const modeLabel = getSearchModeConfig(searchMode).label;
 
   return (
     <section
@@ -374,6 +597,10 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
             {claimSummary}
           </h2>
 
+          <div className="inline-flex rounded-full border border-line bg-soft px-2.5 py-1 text-[12px] text-ink-muted">
+            {modeLabel} result view
+          </div>
+
           {result.normalizedInput && result.normalizedInput !== result.input && (
             <div className="text-[12px] text-ink-dim">
               Normalized: <span className="font-mono-tight text-ink-body">{result.normalizedInput}</span>
@@ -391,6 +618,8 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
             {result.summary}
           </p>
         </header>
+
+        <UniversalSearchTabs result={result} activeTab={activeTab} onChange={setActiveTab} />
 
         <SourceMeshUnderstandingPanel report={result.sourceMesh} />
         <SearchPlanPanel report={result.sourceMesh} />

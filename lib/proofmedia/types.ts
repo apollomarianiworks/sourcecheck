@@ -346,3 +346,89 @@ export interface TopicFollow {
   tag: string;
   followedAt: string;
 }
+
+// PASS 20 engagement architecture. These types are intentionally local-first:
+// they describe real actions or future server events, never fabricated activity.
+export type FeedLaneId =
+  | "for-you"
+  | "following"
+  | "topics"
+  | "debates"
+  | "evidence-needed"
+  | "recently-contexted"
+  | "trending-questions";
+
+export type EvidenceNeedKind =
+  | "needs-source"
+  | "needs-primary-source"
+  | "needs-opposing-evidence"
+  | "needs-timeline-context"
+  | "needs-expert-source"
+  | "needs-legal-clarification";
+
+export type SocialActionKind =
+  | "like"
+  | "helpful"
+  | "save"
+  | "follow-user"
+  | "follow-topic"
+  | "comment"
+  | "rebut"
+  | "add-context"
+  | "add-evidence"
+  | "report"
+  | "share";
+
+export interface ProofmediaAction {
+  id: string;
+  kind: SocialActionKind;
+  targetType: "claim" | "comment" | "topic" | "user" | "collection" | "debate";
+  targetId: string;
+  createdAt: string;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+export type NotificationKind =
+  | "new-follower"
+  | "post-liked"
+  | "post-saved"
+  | "comment-reply"
+  | "rebuttal-added"
+  | "context-note-added"
+  | "evidence-added"
+  | "followed-topic-update"
+  | "routine-result-ready";
+
+export interface ProofmediaNotification {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  targetUrl: string | null;
+  createdAt: string;
+  readAt: string | null;
+  isRealEvent: true;
+}
+
+export interface StarterPrompt {
+  id: string;
+  lane: FeedLaneId;
+  title: string;
+  body: string;
+  topic: string;
+  actionLabel: string;
+  href: string;
+}
+
+export type AnalyticsEventName =
+  | "search_submitted"
+  | "post_created"
+  | "evidence_added"
+  | "context_added"
+  | "debate_joined"
+  | "collection_created"
+  | "topic_followed"
+  | "user_followed"
+  | "routine_created"
+  | "save_clicked"
+  | "share_clicked";

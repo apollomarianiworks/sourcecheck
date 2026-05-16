@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#cc0000" />
+    <title>Proofbase is offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --brand: #cc0000;
+        --ink: #1a1a1a;
+        --muted: #5e5e5e;
+        --line: #d0d0d0;
+        --soft: #f7f7f7;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: var(--ink);
+        background: #fff;
+        font-family: Verdana, Geneva, sans-serif;
+      }
+      main {
+        width: min(560px, 100%);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 22px;
+        background: var(--soft);
+      }
+      .mark {
+        width: 36px;
+        height: 36px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 6px;
+        background: var(--brand);
+        color: #fff;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      h1 { margin: 0 0 8px; font-size: 22px; line-height: 1.2; }
+      p { margin: 0 0 12px; color: var(--muted); line-height: 1.55; }
+      a { color: var(--brand); font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark">P</div>
+      <h1>Proofbase shell is available offline.</h1>
+      <p>
+        Live evidence search needs a network connection. Your installed app shell,
+        navigation, and local browser history can still load once cached.
+      </p>
+      <p><a href="/">Try Proofbase again</a></p>
+    </main>
+  </body>
+</html>

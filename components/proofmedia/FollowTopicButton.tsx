@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FollowStore } from "@/lib/proofmedia/store";
+import { trackProofmediaEvent } from "@/lib/proofmedia/analytics";
 
 interface Props { tag: string; }
 
@@ -16,7 +17,7 @@ export default function FollowTopicButton({ tag }: Props) {
 
   function toggle() {
     if (following) { FollowStore.remove(tag); setFollowing(false); }
-    else           { FollowStore.add(tag);    setFollowing(true); }
+    else           { FollowStore.add(tag); setFollowing(true); trackProofmediaEvent("topic_followed", { topic: tag, source: "topic-button" }); }
   }
 
   if (!mounted) return null;

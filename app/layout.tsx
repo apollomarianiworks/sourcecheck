@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import TopNav from "@/components/TopNav";
+import PwaRegister from "@/components/pwa/PwaRegister";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -29,6 +30,32 @@ export const metadata: Metadata = {
   },
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/proofbase-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/proofbase-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/proofbase-icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Proofbase",
+    statusBarStyle: "default",
+  },
+  other: {
+    "google-site-verification": "j4_BbYgYOc0PcXlbxi_1we4ULeSHV6DyV39vZllBaug",
+    "mobile-web-app-capable": "yes",
+    "msapplication-TileColor": "#cc0000",
+    "msapplication-config": "none",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#cc0000",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -40,6 +67,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <a href="#main" className="skip-link">Skip to main content</a>
+        <PwaRegister />
         <TopNav />
         <div id="main">{children}</div>
       </body>

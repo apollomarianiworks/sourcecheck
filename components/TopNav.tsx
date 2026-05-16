@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/debate",        label: "Debate" },
   { href: "/explorer",      label: "Research" },
   { href: "/collections",   label: "Collections" },
+  { href: "/topics",        label: "Topics" },
   { href: "/routines",      label: "Routines" },
   { href: "/community",     label: "Community" },
   { href: "/compare",       label: "Compare" },

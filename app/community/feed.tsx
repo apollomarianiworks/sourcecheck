@@ -7,7 +7,16 @@ import { useAuth } from "@/lib/firebase/auth-hook";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { readFeed, type ClaimDoc } from "@/lib/community/firestore";
 import { ALLOWED_CATEGORIES, type ClaimCategoryId } from "@/lib/community/validation";
+import { evidenceNeedsForClaim, FEED_LANES, rankClaimsForLane } from "@/lib/proofmedia/engagement";
+import type { EvidenceNeedKind, FeedLaneId } from "@/lib/proofmedia/types";
 import Avatar from "@/components/proofmedia/Avatar";
+import NotificationBell from "@/components/proofmedia/NotificationBell";
+import ProgressPanel from "@/components/proofmedia/ProgressPanel";
+import ShareActions from "@/components/proofmedia/ShareActions";
+import SocialActionBar from "@/components/proofmedia/SocialActionBar";
+import StarterPromptList from "@/components/proofmedia/StarterPromptList";
+import TodayPanel from "@/components/proofmedia/TodayPanel";
+import TopicOnboarding from "@/components/proofmedia/TopicOnboarding";
 import ClaimComposer from "./composer";
 
 const CATEGORY_LABEL: Record<ClaimCategoryId, string> = {
@@ -31,6 +40,7 @@ export default function CommunityFeed() {
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<ClaimCategoryId | "all">("all");
   const [sort, setSort] = useState<Sort>("newest");
+  const [lane, setLane] = useState<FeedLaneId>("for-you");
   const [query, setQuery] = useState("");
   const [showComposer, setShowComposer] = useState(false);
 
@@ -55,13 +65,14 @@ export default function CommunityFeed() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((c) =>
+    const laneItems = rankClaimsForLane(items, lane);
+    if (!q) return laneItems;
+    return laneItems.filter((c) =>
       c.title.toLowerCase().includes(q) ||
       c.body.toLowerCase().includes(q) ||
       c.tags.some((t) => t.toLowerCase().includes(q))
     );
-  }, [items, query]);
+  }, [items, lane, query]);
 
   function handlePostClick() {
     if (status === "signed-in") setShowComposer((v) => !v);
@@ -89,6 +100,8 @@ export default function CommunityFeed() {
           </p>
         </header>
 
+        <TopicOnboarding />
+
         {/* Composer */}
         {showComposer && status === "signed-in" && profile && (
           <ClaimComposer
@@ -102,6 +115,19 @@ export default function CommunityFeed() {
 
         {/* Filters */}
         <div className="card p-2 space-y-2">
+          <div className="flex flex-wrap gap-1 border-b border-line-soft pb-2">
+            {FEED_LANES.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setLane(l.id)}
+                className={`text-[11.5px] px-2 py-1 rounded transition-colors ${lane === l.id ? "bg-ink text-white" : "text-ink-body hover:bg-section"}`}
+                title={l.description}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1">
             <FilterPill active={category === "all"} onClick={() => setCategory("all")}>All</FilterPill>
             {ALLOWED_CATEGORIES.map((c) => (
@@ -135,13 +161,13 @@ export default function CommunityFeed() {
 
         {/* Body */}
         {!configured ? (
-          <NotConfigured />
+          <NotConfigured lane={lane} />
         ) : loading ? (
           <FeedSkeleton />
         ) : error ? (
           <div className="card p-4 text-[13px] text-verdict-red">Feed failed: {error}</div>
         ) : filtered.length === 0 ? (
-          <EmptyFeed status={status} onPost={handlePostClick} />
+          <EmptyFeed status={status} onPost={handlePostClick} lane={lane} />
         ) : (
           <ul className="space-y-2.5">
             {filtered.map((c) => <li key={c.id}><FeedRow claim={c} /></li>)}
@@ -170,6 +196,7 @@ function FeedRow({ claim: c }: { claim: ClaimDoc }) {
   const ev = c.evidenceCount;
   const cc = c.commentCount;
   const verdict = c.sourceMeshSummary?.verdict;
+  const needs = evidenceNeedsForClaim(c);
   return (
     <article className="card p-3.5 hover:border-ink-deep transition-colors">
       <div className="flex items-center gap-2 text-[11.5px] text-ink-muted mb-1.5">
@@ -185,13 +212,30 @@ function FeedRow({ claim: c }: { claim: ClaimDoc }) {
       {c.body && <p className="text-[13px] text-ink-body leading-relaxed mt-1 line-clamp-2">{c.body}</p>}
       <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px]">
         {verdict && <VerdictPill verdict={verdict} />}
+        {needs.slice(0, 2).map((need) => <EvidenceNeedPill key={need} need={need} />)}
         {c.tags.slice(0, 4).map((t) => (
           <span key={t} className="px-1.5 py-0.5 rounded bg-section text-ink-body">#{t}</span>
         ))}
+        <ShareActions targetId={c.id} title={c.title} url={`/community/${c.id}`} evidenceCount={ev} />
         <span className="text-ink-dim ml-auto">{ev} evidence · {cc} comments · score {c.score}</span>
+      </div>
+      <div className="mt-2 pt-2 border-t border-line-soft">
+        <SocialActionBar targetId={c.id} />
       </div>
     </article>
   );
+}
+
+function EvidenceNeedPill({ need }: { need: EvidenceNeedKind }) {
+  const labels: Record<EvidenceNeedKind, string> = {
+    "needs-source": "Needs source",
+    "needs-primary-source": "Needs primary source",
+    "needs-opposing-evidence": "Needs opposing evidence",
+    "needs-timeline-context": "Needs timeline context",
+    "needs-expert-source": "Needs expert source",
+    "needs-legal-clarification": "Needs legal/source clarity",
+  };
+  return <span className="px-1.5 py-0.5 rounded bg-verdict-amberSoft text-verdict-amber font-medium">{labels[need]}</span>;
 }
 
 function VerdictPill({ verdict }: { verdict: NonNullable<ClaimDoc["sourceMeshSummary"]>["verdict"] }) {
@@ -221,12 +265,13 @@ function FeedSkeleton() {
   );
 }
 
-function EmptyFeed({ status, onPost }: { status: string; onPost: () => void }) {
+function EmptyFeed({ status, onPost, lane }: { status: string; onPost: () => void; lane: FeedLaneId }) {
   return (
-    <div className="card p-8 text-center space-y-3">
-      <h2 className="text-[18px] font-bold text-ink">No claims yet</h2>
+    <div className="space-y-3">
+      <div className="card p-8 text-center space-y-3">
+      <h2 className="text-[18px] font-bold text-ink">No real claims in this lane yet</h2>
       <p className="text-[13px] text-ink-muted max-w-prose mx-auto">
-        Be the first to post an evidence-grounded claim. Every post must cite real sources.
+        Proofbase will not invent posts, fake trending questions, or fake engagement. Start a sourced claim or use a starter prompt below.
       </p>
       <button
         type="button" onClick={onPost}
@@ -234,18 +279,23 @@ function EmptyFeed({ status, onPost }: { status: string; onPost: () => void }) {
       >
         {status === "signed-in" ? "Start your first claim" : "Sign in to post"}
       </button>
+      </div>
+      <StarterPromptList lane={lane} />
     </div>
   );
 }
 
-function NotConfigured() {
+function NotConfigured({ lane }: { lane: FeedLaneId }) {
   return (
+    <div className="space-y-3">
     <div className="card p-6 space-y-2">
       <h2 className="text-[16px] font-bold text-ink">Community is offline</h2>
-      <p className="text-[13px] text-ink-muted">Firebase isn&apos;t configured in this environment. Set the <code>NEXT_PUBLIC_FIREBASE_*</code> env vars to enable signup, posting, and the feed.</p>
+      <p className="text-[13px] text-ink-muted">Firebase isn&apos;t configured in this environment. Set the <code>NEXT_PUBLIC_FIREBASE_*</code> env vars to enable signup, posting, and the real feed.</p>
       <p className="text-[13px] text-ink-muted">
         The fact-checking tools (<Link className="text-link hover:underline" href="/">home</Link>, <Link className="text-link hover:underline" href="/compare">compare</Link>, <Link className="text-link hover:underline" href="/explorer">explorer</Link>) work without Firebase — only the social layer needs it.
       </p>
+    </div>
+    <StarterPromptList lane={lane} />
     </div>
   );
 }
@@ -253,6 +303,9 @@ function NotConfigured() {
 function CommunityRightRail() {
   return (
     <aside className="space-y-3 lg:sticky lg:top-16 self-start">
+      <TodayPanel />
+      <ProgressPanel />
+      <NotificationBell />
       <div className="card p-3.5 space-y-2 text-[12.5px] text-ink-body">
         <div className="text-[11px] uppercase tracking-wide text-ink-muted">House rules</div>
         <ul className="list-disc pl-4 space-y-1">

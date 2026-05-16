@@ -1,0 +1,59 @@
+{
+  "name": "Proofbase",
+  "short_name": "Proofbase",
+  "description": "Evidence-first search, research, and debate workspace.",
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#cc0000",
+  "categories": ["productivity", "education", "news"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/proofbase-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/proofbase-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/proofbase-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New research check",
+      "short_name": "Search",
+      "description": "Open Proofbase Search.",
+      "url": "/?mode=research",
+      "icons": [{ "src": "/icons/proofbase-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Community evidence",
+      "short_name": "Community",
+      "description": "Open ProofMedia community research.",
+      "url": "/community",
+      "icons": [{ "src": "/icons/proofbase-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Research routines",
+      "short_name": "Routines",
+      "description": "Open saved research routines.",
+      "url": "/routines",
+      "icons": [{ "src": "/icons/proofbase-icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

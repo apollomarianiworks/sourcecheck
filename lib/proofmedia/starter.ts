@@ -1,0 +1,71 @@
+import type { StarterPrompt } from "./types";
+
+export const STARTER_TOPICS = [
+  "politics",
+  "health",
+  "science",
+  "ai",
+  "crime",
+  "finance",
+  "law",
+  "sports",
+  "celebrity-rumors",
+  "local-news",
+];
+
+export const STARTER_PROMPTS: StarterPrompt[] = [
+  {
+    id: "ai-regulation-watch",
+    lane: "for-you",
+    topic: "ai",
+    title: "Starter prompt: What changed in AI regulation this week?",
+    body: "Use SourceMesh to collect government releases, major reporting, and expert context before posting a claim.",
+    actionLabel: "Research AI regulation",
+    href: "/?q=AI%20regulation%20latest%20evidence",
+  },
+  {
+    id: "health-primary-source",
+    lane: "evidence-needed",
+    topic: "health",
+    title: "Starter prompt: Find the primary source behind a health claim",
+    body: "Look for CDC, FDA, NIH, PubMed, or study links before sharing summaries from social media.",
+    actionLabel: "Check a health claim",
+    href: "/?q=health%20claim%20primary%20source",
+  },
+  {
+    id: "debate-nuclear",
+    lane: "debates",
+    topic: "science",
+    title: "Starter prompt: Build a balanced nuclear energy debate packet",
+    body: "Collect pro evidence, con evidence, statistics, expert sources, and open questions.",
+    actionLabel: "Build debate brief",
+    href: "/debate?topic=nuclear%20energy",
+  },
+  {
+    id: "local-crime-context",
+    lane: "topics",
+    topic: "crime",
+    title: "Starter prompt: Add timeline context to a local crime claim",
+    body: "Separate official police/court records from commentary, reposts, and unsupported screenshots.",
+    actionLabel: "Research local claim",
+    href: "/?q=local%20crime%20claim%20court%20records",
+  },
+  {
+    id: "finance-scam-source",
+    lane: "evidence-needed",
+    topic: "finance",
+    title: "Starter prompt: Verify a finance or scam warning",
+    body: "Search FTC, SEC, company filings, consumer alerts, and reliable reporting before amplifying it.",
+    actionLabel: "Check finance claim",
+    href: "/?q=finance%20scam%20FTC%20SEC%20evidence",
+  },
+  {
+    id: "viral-question",
+    lane: "trending-questions",
+    topic: "celebrity-rumors",
+    title: "Starter prompt: Is this viral celebrity claim sourced anywhere reliable?",
+    body: "Track the earliest source, whether there is a primary statement, and what evidence is missing.",
+    actionLabel: "Check viral claim",
+    href: "/?mode=social&q=viral%20celebrity%20claim%20source",
+  },
+];
