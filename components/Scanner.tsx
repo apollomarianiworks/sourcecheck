@@ -222,16 +222,6 @@ export default function Scanner() {
             </Link>
           </div>
         </div>
-        <div className="hidden" aria-hidden="true">
-          ✓
-        </div>
-        <h1 className="hidden">
-          <span className="text-brand">Proof</span>base
-        </h1>
-        <p className="hidden">
-          The internet&apos;s research and debate operating system.
-        </p>
-
         {/* Search box */}
         <div className="max-w-3xl mx-auto pt-1 space-y-3 text-left">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1" aria-label="Search modes">
