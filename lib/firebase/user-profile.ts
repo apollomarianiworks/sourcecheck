@@ -7,6 +7,7 @@ import type { User } from "firebase/auth";
 import { getFirebaseAuth, getFirebaseDb } from "./client";
 import { slugify } from "@/lib/proofmedia/slug";
 import { assertNoProtectedUserFields, guardClientAction } from "@/lib/security/guard";
+import { sanitizeUserText, sanitizeUsername } from "@/lib/security/sanitize";
 import { validateBio, validateDisplayName, validateProfileUrl, validateUsername } from "@/lib/security/validators";
 
 /** Public-readable user profile document at `users/{uid}`. */
@@ -36,11 +37,11 @@ function usernameFromUser(u: User): string {
     u.displayName?.trim() ||
     u.email?.split("@")[0] ||
     "user";
-  const base = slugify(seed, "user");
+  const base = sanitizeUsername(slugify(seed, "user"));
   // Add a stable short suffix from the uid so collisions across users
   // are unlikely without a separate usernames-index collection.
   const suffix = (u.uid.replace(/[^a-z0-9]/gi, "") || "x").slice(0, 4).toLowerCase();
-  return `${base}-${suffix}`;
+  return sanitizeUsername(`${base}-${suffix}`);
 }
 
 /**
@@ -93,7 +94,7 @@ export async function ensureProfile(u: User): Promise<UserProfile | null> {
   const profile: UserProfile = {
     uid:             u.uid,
     username:        usernameFromUser(u),
-    displayName:     u.displayName?.trim() || u.email?.split("@")[0] || "Anonymous",
+    displayName:     sanitizeUserText(u.displayName?.trim() || u.email?.split("@")[0] || "Anonymous", 50),
     photoURL:        u.photoURL ?? null,
     bio:             "",
     email:           null,
