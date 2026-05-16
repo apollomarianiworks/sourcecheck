@@ -37,7 +37,7 @@ export interface GuardUserState {
 
 export function safeErrorMessage(error: unknown): string {
   if (error instanceof SecurityError) return error.message;
-  if (error instanceof Error && /^(Invalid|Username|Display name|Bio|This link|You cannot|Your account|Verify your email|You need to sign in|This action is temporarily limited)/i.test(error.message)) {
+  if (error instanceof Error && /^(Invalid|Username|Display name|Bio|This link|You cannot|Your account|Verify your email|You need to sign in|This action is temporarily limited|That email|Incorrect password|No account|Password must|Sign-in popup|Your browser|Network error|Too many attempts|Authentication failed|This domain)/i.test(error.message)) {
     return error.message;
   }
   if (error instanceof Error && /^Firebase: Error \(auth\//.test(error.message)) return "Authentication failed. Check your sign-in details.";
