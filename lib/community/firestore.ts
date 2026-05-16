@@ -24,7 +24,7 @@ import { getFirebaseDb, getFirebaseAuth } from "@/lib/firebase/client";
 import { readProfile } from "@/lib/firebase/user-profile";
 import { guardClientAction } from "@/lib/security/guard";
 import { sanitizeTag, sanitizeUserText } from "@/lib/security/sanitize";
-import { validateCommentInput, validateEvidenceUrlsInput, validatePostInput } from "@/lib/security/validators";
+import { validateCommentInput, validatePostInput } from "@/lib/security/validators";
 import type {
   ClaimCategoryId, CommentType, ClaimVisibility,
 } from "./validation";

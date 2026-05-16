@@ -112,6 +112,64 @@ Vercel. The `/api/check` route uses the Node.js runtime (declared in
 - Google Fact Check Tools' free quota is generous but not unlimited — Vercel
   will surface a `rate-limited` state if hit.
 
+## Security and Abuse Prevention
+
+PASS 24 hardens Proofbase and ProofMedia against common app abuse. The app is
+hardened, not impossible to hack.
+
+Security files live in `lib/security/`:
+
+- `guard.ts`: auth, email verification, protected-field, safe error, and API guard helpers.
+- `validators.ts`: shared limits for posts, comments, profiles, evidence links, routines, and collections.
+- `sanitize.ts`: text cleanup, HTML stripping, invisible-character cleanup, and unsafe URL blocking.
+- `rate-limits.ts`: action-specific limits for posts, comments, likes, follows, reports, SourceMesh, routines, profile updates, extraction, and assistant calls.
+- `abuse-detection.ts`: repeated content, duplicate evidence, link spam, suspicious usernames, and unsupported-claim signals.
+- `permissions.ts`: role, ownership, restrictions, and protected-field definitions.
+- `audit-log.ts`: typed local/server audit event foundation.
+
+Firestore rules are in `firestore.rules`. Deploy them before enabling public
+community writes:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+The rules enforce authenticated writes, owner-only edits, public reads only for
+active public content, protected moderation fields, per-user saves/likes/follows,
+and admin-only moderation/report queues. Client checks are for UX; Firestore
+rules are the enforcement layer.
+
+Environment safety:
+
+- Keep `.env.local`, `.env.*.local`, private keys, `.pem` files, and service
+  account JSON out of Git.
+- Firebase Web config is allowed in `NEXT_PUBLIC_FIREBASE_*` variables.
+- Never expose Firebase Admin SDK credentials, service account JSON, or private
+  model/provider keys in `NEXT_PUBLIC_*` variables.
+- `env.example` must contain placeholders only.
+- In Firebase Auth, add your local and Vercel production domains to Authorized
+  domains.
+
+Source fetching safety:
+
+- `/api/extract-url` blocks non-http protocols, localhost, loopback, private
+  LAN IPs, metadata IPs, private redirects, embedded credentials, non-standard
+  ports, oversized responses, and recursive crawling.
+- Page analysis uses a single-page fetch, timeout, byte cap, safe user agent,
+  and manual redirect validation.
+- Proofbase does not bypass paywalls or login-gated/private content.
+
+Known remaining security gaps:
+
+- Rate limits are in-memory on serverless instances and localStorage-backed on
+  the client. Production-scale enforcement should move to Redis, Upstash, Vercel
+  KV, Firebase App Check, or Cloud Functions.
+- Moderation queues, audit-log writes, and counter aggregation need Firebase
+  Admin SDK or Cloud Functions before they should be treated as authoritative.
+- Firestore rules cannot perform full DNS SSRF checks; network fetch endpoints
+  handle that server-side.
+- Security checklist: `docs/security-checklist.md`.
+
 ### Recommended Vercel environment variables
 
 | Key                   | Purpose                                                   |

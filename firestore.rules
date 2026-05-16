@@ -41,8 +41,8 @@ service cloud.firestore {
       return !('banned' in restrictions(uid)) && (!userExists(uid) || userData(uid).status == 'active');
     }
 
-    function canWrite(uid, action) {
-      return isMe(uid) && notBanned(uid) && !(('no-' + action) in restrictions(uid));
+    function canWrite(uid, restriction) {
+      return isMe(uid) && notBanned(uid) && !(restriction in restrictions(uid));
     }
 
     function isString(v) {
@@ -164,7 +164,7 @@ service cloud.firestore {
         && request.resource.data.status == 'active'
         && request.resource.data.moderationStatus == 'clear';
 
-      allow update: if canWrite(uid, 'profile-edit')
+      allow update: if canWrite(uid, 'no-profile-edit')
         && request.resource.data.uid == uid
         && noProtectedUserChange()
         && request.resource.data.keys().hasOnly([
@@ -191,7 +191,7 @@ service cloud.firestore {
         && validDisplayName(request.resource.data.displayName)
         && validBio(request.resource.data.bio)
         && request.resource.data.email == resource.data.email
-        && request.resource.data.emailVerified == request.auth.token.email_verified
+        && request.resource.data.emailVerified == resource.data.emailVerified
         && (request.resource.data.photoURL == null || validUrl(request.resource.data.photoURL));
 
       allow delete: if false;
@@ -200,7 +200,7 @@ service cloud.firestore {
     match /claims/{claimId} {
       allow read: if publicContent(resource.data) || (signedIn() && resource.data.authorId == request.auth.uid) || isAdmin();
 
-      allow create: if canWrite(request.auth.uid, 'post')
+      allow create: if canWrite(request.auth.uid, 'no-post')
         && request.resource.data.keys().hasOnly([
           'authorId',
           'authorUsername',
@@ -280,7 +280,7 @@ service cloud.firestore {
         || (signedIn() && resource.data.authorId == request.auth.uid)
         || isAdmin();
 
-      allow create: if canWrite(request.auth.uid, 'comment')
+      allow create: if canWrite(request.auth.uid, 'no-comment')
         && request.auth.token.email_verified == true
         && request.resource.data.keys().hasOnly([
           'claimId',
@@ -327,7 +327,7 @@ service cloud.firestore {
 
     match /follows/{followId} {
       allow read: if signedIn() && resource.data.followerId == request.auth.uid;
-      allow create: if canWrite(request.auth.uid, 'follow')
+      allow create: if canWrite(request.auth.uid, 'no-follow')
         && request.resource.data.keys().hasOnly(['followerId', 'targetType', 'targetId', 'createdAt'])
         && request.resource.data.followerId == request.auth.uid
         && request.resource.data.targetType in ['user','topic']
@@ -339,7 +339,7 @@ service cloud.firestore {
 
     match /likes/{likeId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite(request.auth.uid, 'like')
+      allow create: if canWrite(request.auth.uid, 'no-like')
         && request.resource.data.keys().hasOnly(['userId', 'targetType', 'targetId', 'createdAt'])
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.targetType in ['claim','comment']
@@ -350,7 +350,7 @@ service cloud.firestore {
 
     match /votes/{voteId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite(request.auth.uid, 'like')
+      allow create: if canWrite(request.auth.uid, 'no-like')
         && request.resource.data.keys().hasOnly(['userId', 'targetType', 'targetId', 'voteType', 'createdAt'])
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.targetType in ['claim','comment']
@@ -367,7 +367,7 @@ service cloud.firestore {
 
     match /saves/{saveId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
-      allow create: if canWrite(request.auth.uid, 'save')
+      allow create: if canWrite(request.auth.uid, 'no-save')
         && request.resource.data.keys().hasOnly(['userId', 'targetType', 'targetId', 'createdAt'])
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.targetType in ['claim','comment','collection','routine']
@@ -378,7 +378,7 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow read: if isAdmin();
-      allow create: if canWrite(request.auth.uid, 'report')
+      allow create: if canWrite(request.auth.uid, 'no-report')
         && request.resource.data.keys().hasOnly(['reporterId', 'targetType', 'targetId', 'reason', 'details', 'createdAt', 'status'])
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.targetType in ['claim','comment','user']
