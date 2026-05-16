@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile as fbUpdateProfile,
+  sendPasswordResetEmail,
   type User, type AuthError,
 } from "firebase/auth";
 import { getFirebaseAuth, isFirebaseConfigured } from "./client";
@@ -20,6 +21,7 @@ export function useAuth(): AuthState & {
   signUpEmail: (email: string, password: string, displayName: string) => Promise<void>;
   signInEmail: (email: string, password: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOutNow: () => Promise<void>;
   reload: () => Promise<void>;
 } {
@@ -96,13 +98,23 @@ export function useAuth(): AuthState & {
     }
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase not configured.");
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (e) {
+      throw mapAuthError(e);
+    }
+  }, []);
+
   const signOutNow = useCallback(async () => {
     const auth = getFirebaseAuth();
     if (!auth) return;
     await signOut(auth);
   }, []);
 
-  return { ...state, signUpEmail, signInEmail, signInGoogle, signOutNow, reload };
+  return { ...state, signUpEmail, signInEmail, signInGoogle, resetPassword, signOutNow, reload };
 }
 
 function mapAuthError(e: unknown): Error {
@@ -119,6 +131,7 @@ function mapAuthError(e: unknown): Error {
     case "auth/popup-blocked":             return new Error("Your browser blocked the sign-in popup.");
     case "auth/network-request-failed":    return new Error("Network error reaching Firebase. Check your connection.");
     case "auth/too-many-requests":         return new Error("Too many attempts. Wait a minute and try again.");
-    default: return new Error(ae?.message ?? `Sign-in failed (${code || "unknown"}).`);
+    case "auth/unauthorized-domain":       return new Error("This domain is not authorized for Firebase sign-in.");
+    default: return new Error("Authentication failed. Check your details and try again.");
   }
 }

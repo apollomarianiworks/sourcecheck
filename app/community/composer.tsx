@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { createClaim, attachSourceMeshSummary, ClientError, type SourceMeshSnapshot } from "@/lib/community/firestore";
+import { safeErrorMessage } from "@/lib/security/guard";
+import { validateSafeUrl } from "@/lib/security/sanitize";
 import {
   checkDuplicateContent,
   checkRepeatedLinks,
@@ -54,10 +56,11 @@ export default function ClaimComposer({ authorUsername, authorDisplayName, autho
   function addEvidenceUrl() {
     const u = evidenceInput.trim();
     if (!u) return;
-    if (!/^https?:\/\//.test(u)) { setError("Evidence URLs must start with http(s)://"); return; }
+    const safe = validateSafeUrl(u);
+    if (!safe.ok || !safe.url) { setError(safe.message ?? "This link type is not allowed."); return; }
     if (evidenceUrls.length >= MAX_EVIDENCE_LINKS) { setError(`Max ${MAX_EVIDENCE_LINKS} evidence links per claim.`); return; }
-    if (evidenceUrls.includes(u)) { setError("That URL is already attached."); return; }
-    setEvidenceUrls([...evidenceUrls, u]);
+    if (evidenceUrls.includes(safe.url)) { setError("That URL is already attached."); return; }
+    setEvidenceUrls([...evidenceUrls, safe.url]);
     setEvidenceInput("");
     setError(null);
   }
@@ -123,7 +126,7 @@ export default function ClaimComposer({ authorUsername, authorDisplayName, autho
       onCreated(id);
     } catch (e) {
       if (e instanceof ClientError) setError(e.message);
-      else setError(e instanceof Error ? e.message : String(e));
+      else setError(safeErrorMessage(e));
     } finally {
       setBusy(false);
       setProgress(null);

@@ -10,6 +10,8 @@ import {
 } from "@/lib/community/firestore";
 import type { CommentType } from "@/lib/community/validation";
 import { MAX_COMMENT_LENGTH, MIN_COMMENT_LENGTH } from "@/lib/community/validation";
+import { safeErrorMessage } from "@/lib/security/guard";
+import { validateSafeUrl } from "@/lib/security/sanitize";
 import Avatar from "@/components/proofmedia/Avatar";
 
 interface Props { claimId: string; }
@@ -43,7 +45,7 @@ export default function ClaimThreadView({ claimId }: Props) {
         setMyVote(v);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(safeErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -65,11 +67,11 @@ export default function ClaimThreadView({ claimId }: Props) {
 
   async function handleSave() {
     if (status !== "signed-in") { router.push(`/login?next=/community/${claimId}`); return; }
-    try { const v = await toggleSave("claim", claimId); setSaved(v); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    try { const v = await toggleSave("claim", claimId); setSaved(v); } catch (e) { setError(safeErrorMessage(e)); }
   }
   async function handleVote(v: "up" | "down") {
     if (status !== "signed-in") { router.push(`/login?next=/community/${claimId}`); return; }
-    try { const nv = await castVote("claim", claimId, v); setMyVote(nv); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    try { const nv = await castVote("claim", claimId, v); setMyVote(nv); } catch (e) { setError(safeErrorMessage(e)); }
   }
 
   return (
@@ -199,10 +201,11 @@ function CommentComposer({
   function addEv() {
     const u = evInput.trim();
     if (!u) return;
-    if (!/^https?:\/\//.test(u)) { setError("Must be a real http(s) URL"); return; }
+    const safe = validateSafeUrl(u);
+    if (!safe.ok || !safe.url) { setError(safe.message ?? "This link type is not allowed."); return; }
     if (evidence.length >= 5) { setError("Max 5 evidence URLs per comment."); return; }
-    if (evidence.includes(u)) { setError("Already attached."); return; }
-    setEvidence([...evidence, u]);
+    if (evidence.includes(safe.url)) { setError("Already attached."); return; }
+    setEvidence([...evidence, safe.url]);
     setEvInput("");
     setError(null);
   }
@@ -221,7 +224,7 @@ function CommentComposer({
       await onPosted();
     } catch (e) {
       if (e instanceof ClientError) setError(e.message);
-      else setError(e instanceof Error ? e.message : String(e));
+      else setError(safeErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -336,7 +339,7 @@ function ReportButton({ claimId }: { claimId: string }) {
       setTimeout(() => setOpen(false), 1500);
     } catch (e) {
       if (e instanceof ClientError) setError(e.message);
-      else setError(e instanceof Error ? e.message : String(e));
+      else setError(safeErrorMessage(e));
     } finally { setBusy(false); }
   }
 

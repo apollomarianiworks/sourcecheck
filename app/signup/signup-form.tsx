@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/firebase/auth-hook";
 import { isFirebaseConfigured, firebaseMissingEnv } from "@/lib/firebase/client";
+import { safeErrorMessage } from "@/lib/security/guard";
+import { validateDisplayName } from "@/lib/security/validators";
 
 export default function SignupForm() {
   const { status, signUpEmail, signInGoogle } = useAuth();
@@ -36,12 +38,14 @@ export default function SignupForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!agree) { setError("You must agree to the basics to participate."); return; }
+    const name = validateDisplayName(displayName);
+    if (!name.ok) { setError(name.message ?? "Invalid display name."); return; }
     setError(null); setBusy(true);
     try {
       await signUpEmail(email, password, displayName);
       router.replace(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(safeErrorMessage(e));
     } finally { setBusy(false); }
   }
 
@@ -52,7 +56,7 @@ export default function SignupForm() {
       await signInGoogle();
       router.replace(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(safeErrorMessage(e));
     } finally { setBusy(false); }
   }
 

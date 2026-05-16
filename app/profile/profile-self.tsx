@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-hook";
 import { updateProfile } from "@/lib/firebase/user-profile";
 import { readClaimsByAuthor, readUserSaves, readClaim, type ClaimDoc, type SaveDoc } from "@/lib/community/firestore";
+import { safeErrorMessage } from "@/lib/security/guard";
 import { buildReputationSnapshot } from "@/lib/proofmedia/reputation";
 import { CollectionStore } from "@/lib/proofmedia/store";
 import Avatar from "@/components/proofmedia/Avatar";
@@ -188,7 +189,7 @@ function SettingsPanel({ uid, displayName, bio, onSaved }: { uid: string; displa
       await onSaved();
       setMsg("Saved.");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : String(e));
+      setMsg(safeErrorMessage(e));
     } finally { setBusy(false); setTimeout(() => setMsg(null), 2000); }
   }
 

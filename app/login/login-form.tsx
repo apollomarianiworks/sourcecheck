@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/firebase/auth-hook";
 import { isFirebaseConfigured, firebaseMissingEnv } from "@/lib/firebase/client";
+import { safeErrorMessage } from "@/lib/security/guard";
 
 export default function LoginForm() {
-  const { status, signInEmail, signInGoogle } = useAuth();
+  const { status, signInEmail, signInGoogle, resetPassword } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const next = params?.get("next") || "/community";
@@ -45,7 +46,7 @@ export default function LoginForm() {
       await signInEmail(email, password);
       router.replace(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(safeErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -58,7 +59,21 @@ export default function LoginForm() {
       await signInGoogle();
       router.replace(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(safeErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function forgotPassword() {
+    if (!email.trim()) { setError("Enter your email first."); return; }
+    setError(null);
+    setBusy(true);
+    try {
+      await resetPassword(email);
+      setError("Password reset email sent if the account exists.");
+    } catch (e) {
+      setError(safeErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -95,6 +110,9 @@ export default function LoginForm() {
             className="w-full mt-0.5 px-2 py-1.5 border border-line rounded text-[14px]"
           />
         </label>
+        <button type="button" onClick={forgotPassword} disabled={busy} className="text-[12px] text-link hover:underline">
+          Forgot password?
+        </button>
         {error && <div className="text-[12px] text-verdict-red">{error}</div>}
         <button
           type="submit" disabled={busy}
