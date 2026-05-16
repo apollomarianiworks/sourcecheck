@@ -8,8 +8,11 @@ const LINKS = [
   { href: "/debate",        label: "Debate" },
   { href: "/explorer",      label: "Research" },
   { href: "/collections",   label: "Collections" },
+  { href: "/routines",      label: "Routines" },
+  { href: "/community",     label: "Community" },
   { href: "/compare",       label: "Compare" },
   { href: "/data-sources",  label: "Sources" },
+  { href: "/pricing",       label: "Pricing" },
   { href: "/history",       label: "Recent checks" },
 ];
 

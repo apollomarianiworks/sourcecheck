@@ -237,6 +237,7 @@ export interface SourceMeshUnderstanding {
   originalInput: string;
   cleanedInput: string;
   inputType: SourceMeshInputType;
+  searchIntent: SourceMeshSearchIntent;
   recognizedAs: string;
   convertedClaim: string;
   entities: string[];
@@ -251,6 +252,17 @@ export interface SourceMeshUnderstanding {
   isVague: boolean;
   isOpinion: boolean;
 }
+
+export type SourceMeshSearchIntent =
+  | "fact-check"
+  | "debate-prep"
+  | "definition"
+  | "article-finder"
+  | "source-check"
+  | "social-check"
+  | "compare"
+  | "research-report"
+  | "legal-medical-caution";
 
 export interface SourceMeshSourceChecked {
   adapter: string;
@@ -304,6 +316,17 @@ export interface SourceMeshReport {
   pipeline: string[];
   understanding: SourceMeshUnderstanding;
   searchVariants: string[];
+  searchPlan: {
+    interpretedQuery: string;
+    detectedCategory: string;
+    searchIntent: SourceMeshSearchIntent;
+    selectedAdapters: string[];
+    selectedAdapterRationale: string[];
+    skippedSources: string[];
+    failedSources: string[];
+    whyTheseSources: string[];
+    topicMemory: string[];
+  };
   sourcesChecked: SourceMeshSourceChecked[];
   evidenceMap: SourceMeshEvidenceMap;
   confidenceLabel: SourceMeshConfidenceLabel;

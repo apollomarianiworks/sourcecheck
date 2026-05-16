@@ -45,6 +45,7 @@ export function understandQuery(input: string): SourceMeshUnderstanding {
   const convertedClaim = questionToClaim(cleanedInput);
   const detected = detectCategory(convertedClaim);
   const inputType = classifyInput(trimmed, mode, social.isSocial, detected.primary, quality.isVague, quality.isOpinion);
+  const searchIntent = classifyIntent(trimmed, inputType);
   const hints = extractHints(convertedClaim);
   const entities = Array.from(new Set([...hints.people, ...hints.organizations, ...properEntities(convertedClaim)]));
   const categories = refineCategories(detected.all, inputType, convertedClaim);
@@ -53,6 +54,7 @@ export function understandQuery(input: string): SourceMeshUnderstanding {
     originalInput: input,
     cleanedInput,
     inputType,
+    searchIntent,
     recognizedAs: recognizedAs(inputType, detected.all, social.platform),
     convertedClaim,
     entities,
@@ -61,6 +63,18 @@ export function understandQuery(input: string): SourceMeshUnderstanding {
     isVague: quality.isVague,
     isOpinion: quality.isOpinion,
   };
+}
+
+function classifyIntent(raw: string, inputType: SourceMeshInputType): SourceMeshUnderstanding["searchIntent"] {
+  if (inputType === "social-url") return "social-check";
+  if (inputType === "domain" || inputType === "article-url") return "source-check";
+  if (["health-claim", "legal-court-claim", "crime-local-claim"].includes(inputType)) return "legal-medical-caution";
+  if (/\b(debate|pro con|argue|argument|rebuttal|cross[- ]?examination)\b/i.test(raw)) return "debate-prep";
+  if (/\b(define|definition|what does|what is|explain|context|why is .* controversial)\b/i.test(raw)) return "definition";
+  if (/\b(best articles|articles about|longform|analysis pieces|opinion pieces)\b/i.test(raw)) return "article-finder";
+  if (/\b(compare|versus|vs\.?|framing differences|both sides)\b/i.test(raw)) return "compare";
+  if (/\b(report|deep research|timeline|overview|research packet)\b/i.test(raw)) return "research-report";
+  return "fact-check";
 }
 
 export function generateSearchVariants(understanding: SourceMeshUnderstanding): string[] {

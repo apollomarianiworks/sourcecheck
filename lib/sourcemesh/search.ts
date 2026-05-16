@@ -134,6 +134,7 @@ export async function runSourceMesh(input: string, opts: { maxResultsPerAdapter?
     ],
     understanding,
     searchVariants: variants,
+    searchPlan: buildSearchPlan(understanding, routePlan, Array.from(coverageMap.values())),
     sourcesChecked: Array.from(coverageMap.values()),
     evidenceMap,
     confidenceLabel: meshConfidence.label,
@@ -156,6 +157,38 @@ export async function runSourceMesh(input: string, opts: { maxResultsPerAdapter?
   };
   cache.set(cacheKey, { at: Date.now(), value });
   return value;
+}
+
+function buildSearchPlan(
+  understanding: ReturnType<typeof understandQuery>,
+  routePlan: ReturnType<typeof buildAdapterRunPlan>,
+  sources: SourceMeshSourceChecked[]
+): SourceMeshReport["searchPlan"] {
+  const selected = sources.filter((source) => routePlan.adapterIds.includes(source.adapter));
+  const skipped = sources.filter((source) => ["no-key", "skipped", "not-applicable"].includes(source.status)).map((source) => source.name);
+  const failed = sources.filter((source) => ["error", "blocked", "rate-limited"].includes(source.status)).map((source) => `${source.name}: ${source.errorMessage ?? source.status}`);
+  return {
+    interpretedQuery: understanding.convertedClaim || understanding.cleanedInput,
+    detectedCategory: understanding.categories.join(", "),
+    searchIntent: understanding.searchIntent,
+    selectedAdapters: selected.map((source) => source.name),
+    selectedAdapterRationale: routePlan.rationale,
+    skippedSources: skipped,
+    failedSources: failed,
+    whyTheseSources: [
+      `Intent classified as ${understanding.searchIntent}.`,
+      `Input recognized as ${understanding.recognizedAs}.`,
+      understanding.hints.sourceTargets.length > 0
+        ? `Source targets suggested by the query: ${understanding.hints.sourceTargets.join(", ")}.`
+        : "General public-source discovery was used because the query did not name a specific source type.",
+    ],
+    topicMemory: Array.from(new Set([
+      ...understanding.entities,
+      ...understanding.hints.organizations,
+      ...understanding.hints.locations,
+      ...understanding.hints.dates,
+    ])).slice(0, 12),
+  };
 }
 
 async function buildSocialBlock(input: string, claimText: string): Promise<NonNullable<SourceMeshReport["social"]>> {

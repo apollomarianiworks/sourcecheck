@@ -1,5 +1,23 @@
 # Proofbase
 
+Proofbase is the internet's research and debate operating system. It does not claim absolute truth; it helps users search better, compare evidence, understand uncertainty, and build source-backed arguments.
+
+## Proofbase AI roadmap
+
+The AI layer is evidence-grounded by design. It may summarize SourceMesh results, rewrite searches, suggest follow-ups, explain uncertainty, organize research, and help draft source-backed debate briefs. It must not invent sources, URLs, quotes, statistics, citations, or verdicts.
+
+Future model path:
+
+Phase A: collect privacy-conscious feedback and evidence examples through local JSONL-ready training events.
+
+Phase B: build an evaluation dataset for evidence summaries, source classification, query rewrites, and uncertainty explanations.
+
+Phase C: fine-tune a small open model with LoRA/PEFT if the collected dataset is useful enough.
+
+Phase D: deploy a Proofbase-native model only if hosting is affordable and evidence-grounding remains reliable.
+
+Proofbase is not attempting ChatGPT-scale model pretraining.
+
 A public **source-quality scanner** for claims, URLs, and domains.
 Cross-references the Google Fact Check Tools API, GDELT news archive,
 Wikipedia, and a local source-reputation database.

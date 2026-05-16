@@ -46,6 +46,22 @@ export function routeSources(understanding: SourceMeshUnderstanding): SourceRout
     rationale.push("AI/deepfake claims need independent reporting or primary media-forensics sources.");
   }
 
+  if (understanding.searchIntent === "debate-prep" || understanding.searchIntent === "research-report") {
+    adapterIds.add("openalex");
+    adapterIds.add("crossref");
+    adapterIds.add("brave");
+    adapterIds.add("newsdata");
+    rationale.push("Research and debate intents add academic and optional broad web/news discovery.");
+  }
+
+  if (understanding.searchIntent === "article-finder") {
+    adapterIds.add("gdelt");
+    adapterIds.add("rss");
+    adapterIds.add("brave");
+    adapterIds.add("newsdata");
+    rationale.push("Article-finder intent prioritizes news, RSS, and optional web/news indexes.");
+  }
+
   adapterIds.add("wikimedia");
   adapterIds.add("gdelt");
   adapterIds.add("rss");

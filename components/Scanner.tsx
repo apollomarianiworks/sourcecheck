@@ -34,6 +34,9 @@ import EvidenceMapPanel from "./EvidenceMapPanel";
 import SocialPageCheckPanel from "./SocialPageCheckPanel";
 import SaveCheckButton from "./SaveCheckButton";
 import AskFollowUpPanel from "./AskFollowUpPanel";
+import ProofbaseAssistant from "./ProofbaseAssistant";
+import TrainingFeedback from "./TrainingFeedback";
+import SearchPlanPanel from "./SearchPlanPanel";
 
 const STATUS_LINES = [
   "Understanding the query...",
@@ -390,6 +393,7 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
         </header>
 
         <SourceMeshUnderstandingPanel report={result.sourceMesh} />
+        <SearchPlanPanel report={result.sourceMesh} />
         <SocialPageCheckPanel report={result.sourceMesh} />
         <ClaimLabelsPanel labels={result.claimLabels} missing={result.missingSignals} />
         <SafetyWarningsPanel warnings={result.safetyWarnings} />
@@ -399,6 +403,8 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
           coverageLevel={result.coverageLevel}
           category={result.claimCategory}
         />
+
+        <ProofbaseAssistant result={result} />
 
         {result.deepReport && (
           <DeepReportPanel report={result.deepReport} evidence={result.evidence} result={result} />
@@ -457,6 +463,8 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
         <Section id="section-followup" title="Ask a follow-up" defaultOpen={false}>
           <AskFollowUpPanel report={result.sourceMesh} onPick={onPickRelated} />
         </Section>
+
+        <TrainingFeedback result={result} />
 
         <Section id="section-limitations" title="Limitations of this check" defaultOpen={false}>
           <ul className="text-[13px] text-ink-body space-y-1.5 list-disc pl-5 leading-relaxed">
