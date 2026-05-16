@@ -1,13 +1,15 @@
 "use client";
 
+// PASS 12 category list — exactly as specified.
 const CHIPS: { label: string; query: string }[] = [
-  { label: "Elections",          query: "election fraud" },
-  { label: "Health claims",      query: "do vaccines cause autism" },
-  { label: "Celebrity rumors",   query: "celebrity death hoax" },
-  { label: "AI images & videos", query: "ai generated deepfake image" },
-  { label: "Crime claims",       query: "crime statistics rising" },
-  { label: "Viral screenshots",  query: "viral screenshot fake" },
-  { label: "Financial scams",    query: "cryptocurrency investment scam" },
+  { label: "Politics",          query: "election fraud claim" },
+  { label: "Health",            query: "do vaccines cause autism" },
+  { label: "Science",           query: "human caused climate change evidence" },
+  { label: "Crime",             query: "violent crime rate rising" },
+  { label: "AI images/videos",  query: "ai generated deepfake image" },
+  { label: "Celebrity rumors",  query: "celebrity death hoax" },
+  { label: "Finance scams",     query: "cryptocurrency investment scam" },
+  { label: "Viral posts",       query: "viral screenshot fake quote" },
 ];
 
 interface Props {
@@ -18,7 +20,7 @@ export default function SuggestionChips({ onPick }: Props) {
   return (
     <div className="space-y-2 text-left">
       <div className="text-[12px] text-ink-muted">
-        Suggested starting points
+        Suggested topics
         <span className="text-ink-dim"> — click to fill the search bar. You can edit before checking.</span>
       </div>
       <div className="flex flex-wrap gap-2">

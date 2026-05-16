@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { HistoryEntry } from "@/lib/types";
 import { loadHistory, clearHistory, removeHistoryEntry } from "@/lib/history";
+import Footer from "@/components/Footer";
 
 const VERDICT_PILL: Record<HistoryEntry["verdict"], { cls: string; label: string }> = {
   supports:       { cls: "bg-verdict-greenSoft text-verdict-green", label: "Supported" },
@@ -110,6 +111,7 @@ export default function HistoryPage() {
           </>
         )}
       </div>
+      <Footer />
     </main>
   );
 }

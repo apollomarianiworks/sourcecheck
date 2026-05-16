@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { CheckResult } from "@/lib/types";
-import ShareButtons from "./ShareButtons";
+import ShareMenu from "./ShareMenu";
 import ReportIssueButton from "./ReportIssueButton";
 
 interface Props { result: CheckResult; }
@@ -124,8 +124,8 @@ export default function ResultSidebar({ result }: Props) {
 
       {/* Share */}
       <div className="card p-3 space-y-2">
-        <div className="text-[11px] text-ink-muted uppercase tracking-wide">Share</div>
-        <ShareButtons result={result} />
+        <div className="text-[11px] text-ink-muted uppercase tracking-wide">Share this result</div>
+        <ShareMenu result={result} />
       </div>
 
       {/* Report issue */}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Limitations",
@@ -81,6 +82,7 @@ export default function LimitationsPage() {
           your own judgement. It is a transparency layer for source quality, not an oracle.
         </div>
       </article>
+      <Footer />
     </main>
   );
 }

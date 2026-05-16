@@ -26,6 +26,8 @@ import SuggestionChips from "./SuggestionChips";
 import RecentChecksRow from "./RecentChecksRow";
 import ResultSidebar from "./ResultSidebar";
 import SourceCoveragePanel from "./SourceCoveragePanel";
+import HomeCTACards from "./HomeCTACards";
+import WhatThisMeansPanel from "./WhatThisMeansPanel";
 import Tooltip, { GLOSSARY } from "./Tooltip";
 
 const STATUS_LINES = [
@@ -233,6 +235,13 @@ export default function Scanner() {
         <SuggestionChips onPick={(q) => { setInput(q); inputRef.current?.focus(); }} />
       </div>
 
+      {/* What you can do — only shown when no result is on screen */}
+      {!result && !loading && (
+        <div className="max-w-4xl mx-auto">
+          <HomeCTACards onPickExample={(q) => { setInput(q); inputRef.current?.focus(); }} />
+        </div>
+      )}
+
       {/* Recent checks (from real localStorage) */}
       <div className="max-w-2xl mx-auto">
         <RecentChecksRow refreshKey={historyKey} onPick={replay} />
@@ -361,6 +370,8 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
           )}
 
           <VerdictBadge verdict={result.evidenceVerdict} />
+
+          <WhatThisMeansPanel result={result} />
 
           <ScoreDisplay score={result.sourceQualityScore} />
 

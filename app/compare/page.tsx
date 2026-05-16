@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CompareTool from "./compare-tool";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Compare two sources",
@@ -23,6 +24,7 @@ export default function ComparePage() {
         </header>
         <CompareTool />
       </div>
+      <Footer />
     </main>
   );
 }
