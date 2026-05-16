@@ -77,6 +77,24 @@
       "limitations": "Official US Centers for Disease Control announcements."
     },
     {
+      "id": "fda-press",
+      "name": "FDA - Press Releases",
+      "url": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/press-releases/rss.xml",
+      "publisher": "fda.gov",
+      "category": "government",
+      "claimCategories": ["health-medical", "science-research", "general"],
+      "limitations": "Official US Food and Drug Administration press releases."
+    },
+    {
+      "id": "fda-health-fraud",
+      "name": "FDA - Health Fraud",
+      "url": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/health-fraud/rss.xml",
+      "publisher": "fda.gov",
+      "category": "government",
+      "claimCategories": ["health-medical", "finance-business"],
+      "limitations": "Official FDA health fraud alerts and updates."
+    },
+    {
       "id": "nih-news",
       "name": "NIH — News Releases",
       "url": "https://www.nih.gov/news-events/news-releases/feed.xml",
@@ -120,6 +138,15 @@
       "category": "government",
       "claimCategories": ["finance-business", "politics-news"],
       "limitations": "US Federal Trade Commission press releases."
+    },
+    {
+      "id": "ftc-consumer-protection",
+      "name": "FTC - Consumer Protection Press Releases",
+      "url": "https://www.ftc.gov/feeds/press-release-consumer-protection.xml",
+      "publisher": "ftc.gov",
+      "category": "government",
+      "claimCategories": ["finance-business", "general"],
+      "limitations": "US Federal Trade Commission consumer protection press releases."
     },
     {
       "id": "sec-press",

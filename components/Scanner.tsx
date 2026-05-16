@@ -29,19 +29,24 @@ import SourceCoveragePanel from "./SourceCoveragePanel";
 import HomeCTACards from "./HomeCTACards";
 import WhatThisMeansPanel from "./WhatThisMeansPanel";
 import Tooltip, { GLOSSARY } from "./Tooltip";
+import SourceMeshUnderstandingPanel from "./SourceMeshUnderstandingPanel";
+import EvidenceMapPanel from "./EvidenceMapPanel";
+import SocialPageCheckPanel from "./SocialPageCheckPanel";
+import SaveCheckButton from "./SaveCheckButton";
+import AskFollowUpPanel from "./AskFollowUpPanel";
 
 const STATUS_LINES = [
-  "Querying fact-checkers…",
-  "Searching news archive…",
-  "Looking up reference sources…",
-  "Scoring sources…",
-  "Assembling evidence…",
+  "Understanding the query...",
+  "Generating search variants...",
+  "Routing public sources...",
+  "Checking social metadata if public...",
+  "Scoring evidence and uncertainty...",
 ];
 
 const MODE_HINT: Record<CheckMode, string> = {
-  claim:  "Will be checked as a claim — fact-checkers + news + Wikipedia",
-  url:    "Will be checked as a URL — page scan + domain reputation",
-  domain: "Will be checked as a domain — reputation + news + Wikipedia",
+  claim:  "SourceMesh will classify the claim and search routed public sources",
+  url:    "SourceMesh will check article/social metadata plus independent coverage",
+  domain: "SourceMesh will check source context and public coverage",
 };
 
 export default function Scanner() {
@@ -94,7 +99,7 @@ export default function Scanner() {
     }, 850);
 
     try {
-      const res = await fetch("/api/check", {
+      const res = await fetch("/api/source-mesh/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, input: trimmed, depth }),
@@ -224,8 +229,8 @@ export default function Scanner() {
         {!hasUsedToolBefore && !loading && !result && (
           <div className="max-w-2xl mx-auto text-[12.5px] text-ink-muted bg-section border border-line-soft rounded px-3 py-2 text-left">
             <strong className="text-ink-body">First time?</strong> Paste any factual claim, news article URL,
-            or domain. We&apos;ll cross-reference public fact-checkers, news archives, and reference sources,
-            then show you what they actually said — never an AI-invented verdict.
+            social link, or domain. SourceMesh will classify it, search public sources,
+            and show evidence, uncertainty, missing evidence, and better follow-up searches.
           </div>
         )}
       </section>
@@ -258,7 +263,7 @@ export default function Scanner() {
             <div className="h-full bg-brand/40 animate-pulse" style={{ width: "60%" }} />
           </div>
           <div className="text-[11px] text-ink-dim">
-            Running real searches against public APIs. Partial results will still be shown if some sources fail.
+            Running real searches against public APIs. Every routed source will be reported, including failures.
           </div>
         </div>
       )}
@@ -356,7 +361,10 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
               <span className="uppercase tracking-wide">Result</span>
               <span className="text-ink-dim"> · {result.mode} · {result.depth === "deep" ? "Deep scan" : "Quick scan"}</span>
             </div>
-            <ExportButton result={result} />
+            <div className="flex items-center gap-2">
+              <SaveCheckButton result={result} />
+              <ExportButton result={result} />
+            </div>
           </div>
 
           <h2 id="result-title" className="text-[20px] md:text-[24px] font-bold text-ink leading-snug">
@@ -381,6 +389,8 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
           </p>
         </header>
 
+        <SourceMeshUnderstandingPanel report={result.sourceMesh} />
+        <SocialPageCheckPanel report={result.sourceMesh} />
         <ClaimLabelsPanel labels={result.claimLabels} missing={result.missingSignals} />
         <SafetyWarningsPanel warnings={result.safetyWarnings} />
         <ConfidencePanel confidence={result.confidence} />
@@ -402,6 +412,10 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
               No evidence cards returned. See the sidebar for which APIs were consulted.
             </div>
           )}
+        </Section>
+
+        <Section id="section-evidence-map" title="Evidence map" defaultOpen={false}>
+          <EvidenceMapPanel report={result.sourceMesh} />
         </Section>
 
         <Section id="section-breakdown" title="Source breakdown" defaultOpen={false}>
@@ -431,13 +445,17 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
         )}
 
         {result.searchVariants.length > 0 && (
-          <Section id="section-variants" title={`Why this result was shown (${result.searchVariants.length} queries)`} defaultOpen={false}>
+          <Section id="section-variants" title={`Search variants used (${result.searchVariants.length})`} defaultOpen={false}>
             <QueryVariantsPanel variants={result.searchVariants} />
           </Section>
         )}
 
         <Section id="section-suggestions" title="What would improve this check?" defaultOpen={false}>
           <SuggestionsPanel suggestions={result.suggestions} />
+        </Section>
+
+        <Section id="section-followup" title="Ask a follow-up" defaultOpen={false}>
+          <AskFollowUpPanel report={result.sourceMesh} onPick={onPickRelated} />
         </Section>
 
         <Section id="section-limitations" title="Limitations of this check" defaultOpen={false}>

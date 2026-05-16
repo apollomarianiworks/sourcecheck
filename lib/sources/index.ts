@@ -15,7 +15,7 @@ import { rssAdapter } from "./rss";
 import { detectCategory, adaptersForClaim } from "./router";
 import type { NormalizedEvidence } from "./types";
 
-const ADAPTERS: Record<string, SourceAdapter> = {
+export const SOURCE_ADAPTERS: Record<string, SourceAdapter> = {
   googleFactCheck: googleFactCheckAdapter,
   gdelt:           gdeltAdapter,
   wikimedia:       wikimediaAdapter,
@@ -29,7 +29,7 @@ const ADAPTERS: Record<string, SourceAdapter> = {
   rss:             rssAdapter,
 };
 
-export const ALL_ADAPTER_IDS = Object.keys(ADAPTERS);
+export const ALL_ADAPTER_IDS = Object.keys(SOURCE_ADAPTERS);
 
 export interface MultiSearchOptions {
   /** Per-adapter timeout. Overall scan time is bounded by Promise.allSettled. */
@@ -69,9 +69,9 @@ export async function multiSearch(
   const wantedIds = adaptersForClaim(detected.all);
   const finalIds = Array.from(new Set([...wantedIds, ...(opts.forceInclude ?? [])]))
     .filter((id) => !(opts.exclude ?? []).includes(id))
-    .filter((id) => ADAPTERS[id]);
+    .filter((id) => SOURCE_ADAPTERS[id]);
 
-  const adaptersToRun = finalIds.map((id) => ADAPTERS[id]);
+  const adaptersToRun = finalIds.map((id) => SOURCE_ADAPTERS[id]);
 
   const settled = await Promise.allSettled(
     adaptersToRun.map(async (a) => {

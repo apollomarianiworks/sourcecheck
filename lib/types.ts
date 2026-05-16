@@ -176,6 +176,7 @@ export interface CheckResult {
   sourceCoverage: SourceCoverageEntry[];
   coverageLevel: "low" | "medium" | "high";
   claimCategory: import("./sources/types").ClaimCategory;
+  sourceMesh?: SourceMeshReport;
 }
 
 export interface SourceCoverageEntry {
@@ -203,4 +204,116 @@ export interface CheckRequest {
   mode: CheckMode;
   input: string;
   depth?: ScanDepth;
+}
+
+export type SourceMeshInputType =
+  | "normal-claim"
+  | "vague-question"
+  | "article-url"
+  | "domain"
+  | "social-url"
+  | "screenshot-text"
+  | "celebrity-person-claim"
+  | "health-claim"
+  | "crime-local-claim"
+  | "political-claim"
+  | "finance-scam-claim"
+  | "ai-deepfake-claim"
+  | "science-research-claim"
+  | "legal-court-claim"
+  | "opinion-not-fact-checkable";
+
+export type SourceMeshConfidenceLabel =
+  | "Strong evidence found"
+  | "Moderate evidence found"
+  | "Weak evidence found"
+  | "No strong evidence found"
+  | "Needs primary source"
+  | "Too vague to verify"
+  | "Opinion/not fact-checkable";
+
+export interface SourceMeshUnderstanding {
+  originalInput: string;
+  cleanedInput: string;
+  inputType: SourceMeshInputType;
+  recognizedAs: string;
+  convertedClaim: string;
+  entities: string[];
+  categories: import("./sources/types").ClaimCategory[];
+  hints: {
+    dates: string[];
+    locations: string[];
+    people: string[];
+    organizations: string[];
+    sourceTargets: string[];
+  };
+  isVague: boolean;
+  isOpinion: boolean;
+}
+
+export interface SourceMeshSourceChecked {
+  adapter: string;
+  name: string;
+  status: SourceCoverageEntry["status"];
+  itemCount: number;
+  requiresKey: boolean;
+  optional: boolean;
+  quality: "primary" | "high" | "medium" | "context" | "weak";
+  notes: string;
+  errorMessage?: string;
+  durationMs?: number;
+}
+
+export interface SourceMeshEvidenceMap {
+  strongest: EvidenceItem[];
+  weakest: EvidenceItem[];
+  bySource: { source: string; count: number; quality: string }[];
+  byStance: { stance: EvidenceType; count: number }[];
+}
+
+export interface SocialMetadata {
+  platform: "youtube" | "tiktok" | "instagram" | "x-twitter" | "facebook" | "reddit" | "threads" | "unknown";
+  url: string;
+  canonicalUrl: string;
+  username: string | null;
+  postId: string | null;
+  videoId: string | null;
+  title: string | null;
+  caption: string | null;
+  authorName: string | null;
+  authorUrl: string | null;
+  publishedAt: string | null;
+  thumbnailUrl: string | null;
+  providerName: string | null;
+  fetched: boolean;
+  fetchMethod: "oembed" | "public-json" | "html-metadata" | "none";
+  limitations: string[];
+  errorMessage: string | null;
+}
+
+export interface SocialScore {
+  score: number;
+  label: "strong" | "moderate" | "weak" | "unknown";
+  factors: { label: string; delta: number; detail: string }[];
+  warnings: string[];
+}
+
+export interface SourceMeshReport {
+  pipeline: string[];
+  understanding: SourceMeshUnderstanding;
+  searchVariants: string[];
+  sourcesChecked: SourceMeshSourceChecked[];
+  evidenceMap: SourceMeshEvidenceMap;
+  confidenceLabel: SourceMeshConfidenceLabel;
+  uncertaintyLevel: "low" | "medium" | "high" | "very-high";
+  evidenceFound: string[];
+  missingEvidence: string[];
+  suggestedSearches: string[];
+  suggestedBetterInputs: string[];
+  optionalIntegrations: { name: string; envVar: string; status: "available" | "missing"; notes: string }[];
+  social?: {
+    metadata: SocialMetadata;
+    sourceQuality: SocialScore;
+    claimEvidenceNote: string;
+  } | null;
 }
