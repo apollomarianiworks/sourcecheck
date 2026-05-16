@@ -36,7 +36,7 @@ Confidence: ${result.confidence.level}
 Checked at: ${result.checkedAt}
 Evidence:   ${result.evidence.length} items from ${new Set(result.evidence.map(e => e.domain)).size} domains
 `;
-    const subject = `[SourceCheck] ${reason} — "${result.input.slice(0, 60)}"`;
+    const subject = `[Proofbase] ${reason} — "${result.input.slice(0, 60)}"`;
     return `mailto:reports@example.invalid?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 

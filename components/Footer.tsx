@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const REPORT_MAILTO = "mailto:reports@example.invalid?subject=SourceCheck%20issue";
+const REPORT_MAILTO = "mailto:reports@example.invalid?subject=Proofbase%20issue";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -8,7 +8,7 @@ export default function Footer() {
     <footer className="mt-16 pt-6 border-t border-line">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-[13px] text-ink-body">
         <div>
-          <div className="font-bold text-ink mb-2">SourceCheck</div>
+          <div className="font-bold text-ink mb-2">Proofbase</div>
           <p className="text-[12px] text-ink-muted leading-relaxed">
             A free, public source-quality scanner.
             Cross-references public APIs and a local source-reputation database.
@@ -64,7 +64,7 @@ export default function Footer() {
           Hacker News Algolia · curated RSS feeds · local source rules.
         </div>
         <div>
-          Free · No account · No paid services · No tracking. © {year} SourceCheck.
+          Free · No account · No paid services · No tracking. © {year} Proofbase.
           Not a substitute for primary sources or professional advice.
         </div>
       </div>

@@ -32,7 +32,7 @@ export const redditAdapter: SourceAdapter = {
         headers: {
           // Reddit's docs strongly recommend a descriptive UA. Even so the
           // anonymous endpoint often refuses.
-          "User-Agent": "SourceCheckBot/1.0 (public source verification; +https://example.invalid)",
+          "User-Agent": "ProofbaseBot/1.0 (public source verification; +https://example.invalid)",
           "Accept": "application/json",
         },
         signal: opts?.signal ?? AbortSignal.timeout(opts?.timeoutMs ?? 10_000),

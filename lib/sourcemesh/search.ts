@@ -5,7 +5,7 @@ import { extractSocialMetadata } from "@/lib/social/extract-social-metadata";
 import { scoreSocialSource } from "@/lib/social/social-score";
 import { sourceRegistry, optionalIntegrationStatus } from "./registry";
 import { understandQuery, generateSearchVariants } from "./query-understanding";
-import { routeSources } from "./source-router";
+import { buildAdapterRunPlan } from "./adapter-manager";
 import { buildEvidenceMap, rankEvidence } from "./evidence-ranker";
 import { sourceMeshConfidence } from "./confidence";
 import { buildFollowups } from "./followups";
@@ -28,18 +28,18 @@ export async function runSourceMesh(input: string, opts: { maxResultsPerAdapter?
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.value;
 
   const understanding = understandQuery(input);
-  const variants = generateSearchVariants(understanding);
-  const routePlan = routeSources(understanding);
+  const routePlan = buildAdapterRunPlan(understanding, opts);
   const registry = sourceRegistry();
   const social = understanding.inputType === "social-url"
-    ? await buildSocialBlock(input, variants[0] ?? "")
+    ? await buildSocialBlock(input, "")
     : null;
+  const variants = expandWithSocialText(generateSearchVariants(understanding), social);
 
   const variantResults = await Promise.allSettled(
-    variants.slice(0, 6).map((query) =>
+    variants.slice(0, routePlan.variantLimit).map((query) =>
       multiSearch(query, {
-        timeoutMs: opts.timeoutMs ?? 8_000,
-        maxResultsPerAdapter: opts.maxResultsPerAdapter ?? 4,
+        timeoutMs: routePlan.timeoutMs,
+        maxResultsPerAdapter: routePlan.maxResultsPerAdapter,
         forceInclude: routePlan.adapterIds,
         claimCategories: understanding.categories,
       })
@@ -160,12 +160,25 @@ export async function runSourceMesh(input: string, opts: { maxResultsPerAdapter?
 
 async function buildSocialBlock(input: string, claimText: string): Promise<NonNullable<SourceMeshReport["social"]>> {
   const metadata = await extractSocialMetadata(input);
-  const sourceQuality = scoreSocialSource(metadata, claimText);
+  const visibleClaimText = claimText || [metadata.title, metadata.caption, ...metadata.likelyClaims].filter(Boolean).join(" ");
+  const sourceQuality = scoreSocialSource(metadata, visibleClaimText);
   return {
     metadata,
     sourceQuality,
     claimEvidenceNote: "Social metadata describes the post source only. The claim still needs independent evidence from fact-check, news, official, legal, or research sources.",
   };
+}
+
+function expandWithSocialText(variants: string[], social: SourceMeshReport["social"]): string[] {
+  if (!social) return variants;
+  const metadata = social.metadata;
+  const socialText = [
+    metadata.title,
+    metadata.caption,
+    ...metadata.likelyClaims,
+    metadata.authorName ? `${metadata.authorName} claim` : null,
+  ].filter((value): value is string => !!value && value.trim().length >= 4);
+  return Array.from(new Set([...socialText, ...variants])).slice(0, 14);
 }
 
 function mergeStatus(a: SourceMeshSourceChecked["status"] | undefined, b: SourceMeshSourceChecked["status"]): SourceMeshSourceChecked["status"] {
@@ -178,10 +191,20 @@ function mergeStatus(a: SourceMeshSourceChecked["status"] | undefined, b: Source
 
 function dedupeEvidence(items: EvidenceItem[]): EvidenceItem[] {
   const byKey = new Map<string, EvidenceItem>();
+  const fingerprints: { key: string; item: EvidenceItem }[] = [];
   for (const item of items) {
     const key = normalizeKey(item.url || item.title);
-    const prev = byKey.get(key);
-    if (!prev || scoreEvidenceForDedupe(item) > scoreEvidenceForDedupe(prev)) byKey.set(key, item);
+    const titleKey = titleFingerprint(item.title);
+    const similar = fingerprints.find((entry) =>
+      samePublisherFamily(entry.item.domain, item.domain) &&
+      jaccard(entry.key, titleKey) >= 0.72
+    );
+    const finalKey = similar ? `similar:${similar.key}:${publisherRoot(item.domain)}` : key;
+    const prev = byKey.get(finalKey);
+    if (!prev || scoreEvidenceForDedupe(item) > scoreEvidenceForDedupe(prev)) {
+      byKey.set(finalKey, item);
+    }
+    if (!similar && titleKey) fingerprints.push({ key: titleKey, item });
   }
   return Array.from(byKey.values());
 }
@@ -199,6 +222,39 @@ function normalizeKey(value: string): string {
 
 function scoreEvidenceForDedupe(item: EvidenceItem): number {
   return (item.domainScore ?? 0) + (item.relevance === "high" ? 20 : item.relevance === "medium" ? 10 : 0);
+}
+
+function titleFingerprint(title: string): string {
+  return Array.from(new Set(
+    title
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((token) => token.length >= 4)
+      .sort()
+  )).join(" ");
+}
+
+function jaccard(a: string, b: string): number {
+  const left = new Set(a.split(/\s+/).filter(Boolean));
+  const right = new Set(b.split(/\s+/).filter(Boolean));
+  if (left.size === 0 || right.size === 0) return 0;
+  let overlap = 0;
+  for (const token of left) if (right.has(token)) overlap++;
+  return overlap / (left.size + right.size - overlap);
+}
+
+function samePublisherFamily(a: string, b: string): boolean {
+  const left = publisherRoot(a);
+  const right = publisherRoot(b);
+  return !!left && left === right;
+}
+
+function publisherRoot(domain: string): string {
+  const clean = domain.toLowerCase().replace(/^www\./, "");
+  const parts = clean.split(".").filter(Boolean);
+  if (parts.length <= 2) return clean;
+  return parts.slice(-2).join(".");
 }
 
 function verdictFromEvidence(evidence: EvidenceItem[]): CheckResult["evidenceVerdict"] {

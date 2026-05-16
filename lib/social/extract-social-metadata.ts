@@ -24,10 +24,12 @@ export async function extractSocialMetadata(rawUrl: string, timeoutMs = 5_000): 
 
   const oembed = await fetchOEmbed(detection, timeoutMs);
   if (oembed) {
+    const caption = (textFromHtml(oembed.html ?? "") || oembed.title) ?? null;
     return {
       ...baseMetadata(detection, true, "oembed", null),
       title: oembed.title ?? null,
-      caption: (textFromHtml(oembed.html ?? "") || oembed.title) ?? null,
+      caption,
+      likelyClaims: extractLikelyClaims(`${oembed.title ?? ""}. ${caption ?? ""}`),
       authorName: oembed.author_name ?? detection.username,
       authorUrl: oembed.author_url ?? null,
       thumbnailUrl: oembed.thumbnail_url ?? null,
@@ -42,10 +44,12 @@ export async function extractSocialMetadata(rawUrl: string, timeoutMs = 5_000): 
 
   const html = await fetchPublicHtml(detection, timeoutMs);
   if (html) {
+    const caption = meta(html, "og:description") ?? meta(html, "description");
     return {
       ...baseMetadata(detection, true, "html-metadata", null),
       title: meta(html, "og:title") ?? title(html),
-      caption: meta(html, "og:description") ?? meta(html, "description"),
+      caption,
+      likelyClaims: extractLikelyClaims(`${meta(html, "og:title") ?? title(html) ?? ""}. ${caption ?? ""}`),
       authorName: detection.username,
       authorUrl: detection.username ? authorUrl(detection) : null,
       publishedAt: meta(html, "article:published_time") ?? null,
@@ -83,6 +87,7 @@ function baseMetadata(
     videoId: detection.videoId,
     title: null,
     caption: null,
+    likelyClaims: [],
     authorName: detection.username,
     authorUrl: detection.username ? authorUrl(detection) : null,
     publishedAt: null,
@@ -100,7 +105,7 @@ async function fetchOEmbed(detection: SocialUrlDetection, timeoutMs: number): Pr
   if (!endpoint) return null;
   try {
     const res = await fetch(endpoint(detection.canonicalUrl), {
-      headers: { Accept: "application/json", "User-Agent": "SourceCheckBot/1.0 public metadata checker" },
+      headers: { Accept: "application/json", "User-Agent": "ProofbaseBot/1.0 public metadata checker" },
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
@@ -114,7 +119,7 @@ async function fetchPublicHtml(detection: SocialUrlDetection, timeoutMs: number)
   if (detection.platform === "facebook" || detection.platform === "instagram" || detection.platform === "threads") return null;
   try {
     const res = await fetch(detection.canonicalUrl, {
-      headers: { Accept: "text/html,*/*;q=0.5", "User-Agent": "SourceCheckBot/1.0 public metadata checker" },
+      headers: { Accept: "text/html,*/*;q=0.5", "User-Agent": "ProofbaseBot/1.0 public metadata checker" },
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
@@ -190,4 +195,15 @@ function authorUrl(detection: SocialUrlDetection): string | null {
   if (detection.platform === "threads") return `https://www.threads.net/${detection.username}`;
   if (detection.platform === "instagram") return `https://www.instagram.com/${detection.username.replace(/^@/, "")}`;
   return null;
+}
+
+function extractLikelyClaims(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter((part) =>
+      part.length >= 25 &&
+      /\b(is|are|was|were|will|causes?|caused|proves?|shows?|illegal|fake|scam|study|report|arrested|lawsuit|cure|kills?)\b/i.test(part)
+    )
+    .slice(0, 4);
 }

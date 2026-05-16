@@ -21,7 +21,7 @@ export const crossrefAdapter: SourceAdapter = {
     try {
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "SourceCheckBot/1.0 (public source verification; mailto:sourcecheck@example.invalid)",
+          "User-Agent": "ProofbaseBot/1.0 (public source verification; mailto:proofbase@example.invalid)",
           "Accept": "application/json",
         },
         signal: opts?.signal ?? AbortSignal.timeout(opts?.timeoutMs ?? 10_000),

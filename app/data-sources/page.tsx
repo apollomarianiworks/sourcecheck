@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Data sources",
-  description: "Every public API and dataset SourceCheck consults — what each one provides, what it doesn't, and whether it needs a key.",
+  description: "Every public API and dataset Proofbase consults — what each one provides, what it doesn't, and whether it needs a key.",
   alternates: { canonical: "/data-sources" },
 };
 
@@ -90,6 +90,16 @@ const SOURCES: Row[] = [
     routedFor: "science-research, health-medical.",
   },
   {
+    name: "Semantic Scholar",
+    category: "Scholarly discovery",
+    key: "optional",
+    endpoint: "api.semanticscholar.org/graph/v1/paper/search",
+    endpointUrl: "https://www.semanticscholar.org/product/api",
+    what: "Searches Semantic Scholar's academic graph for papers, abstracts, authors, venues, citation counts, and open-access links.",
+    notWhat: "Academic discovery only. A paper result is not proof that a claim is settled.",
+    routedFor: "science-research, health-medical, technology.",
+  },
+  {
     name: "CourtListener",
     category: "Court opinions",
     key: "optional",
@@ -110,6 +120,26 @@ const SOURCES: Row[] = [
     routedFor: "technology.",
   },
   {
+    name: "GitHub",
+    category: "Technical provenance",
+    key: "optional",
+    endpoint: "api.github.com/search/issues + /search/repositories",
+    endpointUrl: "https://docs.github.com/en/rest/search",
+    what: "Searches public issues and repositories for technical claims, security discussions, provenance, and open-source evidence.",
+    notWhat: "Developer discussion is not automatically authoritative. Popular repositories can still be wrong.",
+    routedFor: "technology, science-research.",
+  },
+  {
+    name: "Stack Exchange",
+    category: "Technical Q&A",
+    key: "none",
+    endpoint: "api.stackexchange.com/2.3/search/advanced",
+    endpointUrl: "https://api.stackexchange.com/docs/search-advanced",
+    what: "Searches Stack Overflow questions for technical context and implementation evidence.",
+    notWhat: "Accepted answers can be outdated. Treat as context, not a primary source.",
+    routedFor: "technology, science-research.",
+  },
+  {
     name: "Reddit (public JSON)",
     category: "Social discussion",
     key: "none",
@@ -123,11 +153,21 @@ const SOURCES: Row[] = [
     name: "Curated RSS feeds",
     category: "Newsroom & gov bulletins",
     key: "none",
-    endpoint: "14 reputable feeds (AP, NPR, BBC, PBS, FactCheck.org, PolitiFact, Snopes, CDC, NIH, NASA, BLS, Census, FTC, SEC)",
-    endpointUrl: "https://github.com/sourcecheck/data/rss-sources.json",
+    endpoint: "Curated reputable feeds (AP, NPR, BBC, PBS, FactCheck.org, PolitiFact, Snopes, CDC, FDA, NIH, NASA, BLS, Census, Eurostat, FTC, SEC)",
+    endpointUrl: "https://github.com/proofbase/data/rss-sources.json",
     what: "Pulls fresh items from a hand-curated list of newsroom and government RSS feeds. 10-minute in-memory cache. Filters items against the user's query.",
     notWhat: "Headlines only — never treated as a verdict, even for fact-checker feeds (the verdict still needs the Google Fact Check API match).",
     routedFor: "All categories (general fallback) + politics-news + health-medical + finance-business.",
+  },
+  {
+    name: "Optional web/news APIs",
+    category: "Optional expansion",
+    key: "optional",
+    endpoint: "Brave Search, NewsData.io, Mediastack",
+    endpointUrl: "/api/source-mesh/coverage",
+    what: "Adapters are wired and reported transparently when keys are present.",
+    notWhat: "Core Proofbase does not require paid APIs. Optional search snippets are context until opened and verified.",
+    routedFor: "General, politics, finance, technology, celebrity/viral, and broad discovery.",
   },
   {
     name: "Local source rules",
@@ -151,7 +191,7 @@ export default function DataSourcesPage() {
             Data sources
           </h1>
           <p className="text-[14px] text-ink-body leading-relaxed">
-            Every API, dataset, and rules file SourceCheck consults — what each one is for,
+            Every API, dataset, and rules file Proofbase consults — what each one is for,
             what it isn&apos;t, whether it requires a key, and which claim categories route to it.
           </p>
         </header>

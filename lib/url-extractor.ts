@@ -216,7 +216,7 @@ async function fetchWithSafety(url: string, redirects: number): Promise<FetchRes
       // Manual redirect handling — we re-validate the destination ourselves
       redirect: "manual",
       headers: {
-        "User-Agent": "SourceCheckBot/1.0; public source verification",
+        "User-Agent": "ProofbaseBot/1.0; public source verification",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.7",
         "Cache-Control": "no-cache",

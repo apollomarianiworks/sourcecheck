@@ -227,6 +227,7 @@ export type SourceMeshConfidenceLabel =
   | "Strong evidence found"
   | "Moderate evidence found"
   | "Weak evidence found"
+  | "Mixed evidence"
   | "No strong evidence found"
   | "Needs primary source"
   | "Too vague to verify"
@@ -280,6 +281,7 @@ export interface SocialMetadata {
   videoId: string | null;
   title: string | null;
   caption: string | null;
+  likelyClaims: string[];
   authorName: string | null;
   authorUrl: string | null;
   publishedAt: string | null;

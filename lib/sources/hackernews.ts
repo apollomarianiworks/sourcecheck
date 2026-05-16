@@ -19,7 +19,7 @@ export const hackernewsAdapter: SourceAdapter = {
 
     try {
       const res = await fetch(url, {
-        headers: { "User-Agent": "SourceCheckBot/1.0 (public source verification)" },
+        headers: { "User-Agent": "ProofbaseBot/1.0 (public source verification)" },
         signal: opts?.signal ?? AbortSignal.timeout(opts?.timeoutMs ?? 10_000),
       });
       if (res.status === 429) return done("rate-limited", start, [], "HN Algolia rate limit reached");

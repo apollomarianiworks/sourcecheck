@@ -23,7 +23,7 @@ export const pubmedAdapter: SourceAdapter = {
     const searchUrl = `${SEARCH}?db=pubmed&term=${encodeURIComponent(query)}&retmax=${max}&retmode=json&sort=relevance${apiKey}`;
     try {
       const searchRes = await fetch(searchUrl, {
-        headers: { "User-Agent": "SourceCheckBot/1.0 (public source verification)" },
+        headers: { "User-Agent": "ProofbaseBot/1.0 (public source verification)" },
         signal: opts?.signal ?? AbortSignal.timeout(opts?.timeoutMs ?? 10_000),
       });
       if (searchRes.status === 429) return done("rate-limited", start, [], "PubMed rate limit reached");
@@ -35,7 +35,7 @@ export const pubmedAdapter: SourceAdapter = {
 
       const summaryUrl = `${SUMMARY}?db=pubmed&id=${ids.join(",")}&retmode=json${apiKey}`;
       const sumRes = await fetch(summaryUrl, {
-        headers: { "User-Agent": "SourceCheckBot/1.0 (public source verification)" },
+        headers: { "User-Agent": "ProofbaseBot/1.0 (public source verification)" },
         signal: opts?.signal ?? AbortSignal.timeout(opts?.timeoutMs ?? 10_000),
       });
       if (!sumRes.ok) return done("error", start, [], `PubMed esummary ${sumRes.status}`);

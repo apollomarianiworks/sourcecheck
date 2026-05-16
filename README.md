@@ -1,4 +1,4 @@
-# SOURCE//CHECK
+# Proofbase
 
 A public **source-quality scanner** for claims, URLs, and domains.
 Cross-references the Google Fact Check Tools API, GDELT news archive,
@@ -65,7 +65,7 @@ context, and the verdict downgrades to "Unverified — context only".
    git init
    git add -A
    git commit -m "Initial commit"
-   git remote add origin git@github.com:YOUR_USER/sourcecheck.git
+   git remote add origin git@github.com:YOUR_USER/proofbase.git
    git push -u origin main
    ```
 
@@ -99,7 +99,7 @@ Vercel. The `/api/check` route uses the Node.js runtime (declared in
 | Key                   | Purpose                                                   |
 |-----------------------|-----------------------------------------------------------|
 | `FACTCHECK_API_KEY`   | (Optional) Enables Google Fact Check Tools matching.       |
-| `NEXT_PUBLIC_SITE_URL`| Canonical absolute URL (e.g. `https://sourcecheck.app`) used for OG tags, sitemap.xml, and robots.txt. |
+| `NEXT_PUBLIC_SITE_URL`| Canonical absolute URL (e.g. `https://proofbase.app`) used for OG tags, sitemap.xml, and robots.txt. |
 
 ### Launch checklist
 
@@ -202,7 +202,7 @@ significant changes.
 
 ### Export
 - [ ] COPY REPORT puts a markdown report on the clipboard
-- [ ] DOWNLOAD .MD saves `sourcecheck-{mode}-{ts}.md` with the same content
+- [ ] DOWNLOAD .MD saves `proofbase-{mode}-{ts}.md` with the same content
 - [ ] Markdown has: header, verdict, score, factors, evidence list
 
 ### Errors and edge cases

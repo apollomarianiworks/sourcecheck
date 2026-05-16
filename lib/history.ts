@@ -2,7 +2,7 @@
 
 import type { CheckResult, HistoryEntry } from "./types";
 
-const KEY = "sourcecheck.history.v1";
+const KEY = "proofbase.history.v1";
 const MAX_ENTRIES = 20;
 
 function safeLocalStorage(): Storage | null {

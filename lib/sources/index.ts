@@ -11,6 +11,12 @@ import { courtlistenerAdapter } from "./courtlistener";
 import { hackernewsAdapter } from "./hackernews";
 import { redditAdapter } from "./reddit";
 import { rssAdapter } from "./rss";
+import { semanticScholarAdapter } from "./semanticScholar";
+import { githubAdapter } from "./github";
+import { stackExchangeAdapter } from "./stackexchange";
+import { braveAdapter } from "./brave";
+import { newsDataAdapter } from "./newsdata";
+import { mediastackAdapter } from "./mediastack";
 
 import { detectCategory, adaptersForClaim } from "./router";
 import type { NormalizedEvidence } from "./types";
@@ -27,6 +33,12 @@ export const SOURCE_ADAPTERS: Record<string, SourceAdapter> = {
   hackernews:      hackernewsAdapter,
   reddit:          redditAdapter,
   rss:             rssAdapter,
+  semanticScholar: semanticScholarAdapter,
+  github:          githubAdapter,
+  stackexchange:   stackExchangeAdapter,
+  brave:           braveAdapter,
+  newsdata:        newsDataAdapter,
+  mediastack:      mediastackAdapter,
 };
 
 export const ALL_ADAPTER_IDS = Object.keys(SOURCE_ADAPTERS);

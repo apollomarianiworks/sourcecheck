@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/",              label: "Home" },
-  { href: "/explorer",      label: "Source Explorer" },
+  { href: "/debate",        label: "Debate" },
+  { href: "/explorer",      label: "Research" },
+  { href: "/collections",   label: "Collections" },
   { href: "/compare",       label: "Compare" },
-  { href: "/how-it-works",  label: "How it works" },
-  { href: "/data-sources",  label: "Data sources" },
+  { href: "/data-sources",  label: "Sources" },
   { href: "/history",       label: "Recent checks" },
 ];
 
@@ -18,12 +19,12 @@ export default function TopNav() {
   return (
     <header className="border-b border-line bg-page sticky top-0 z-50">
       <nav className="max-w-page mx-auto px-4 md:px-6 h-12 flex items-center justify-between gap-4">
-        <Link href="/" className="flex items-baseline gap-1.5 hover:no-underline" aria-label="SOURCE/CHECK home">
+        <Link href="/" className="flex items-baseline gap-1.5 hover:no-underline" aria-label="Proofbase home">
           <span className="inline-flex items-center justify-center w-6 h-6 bg-brand text-white font-bold rounded-sm text-xs leading-none">
             ✓
           </span>
           <span className="font-display text-[18px] font-bold tracking-tight text-ink">
-            <span className="text-brand">Source</span>Check
+            <span className="text-brand">Proof</span>base
           </span>
         </Link>
 

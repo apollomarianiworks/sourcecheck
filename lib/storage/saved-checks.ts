@@ -20,7 +20,7 @@ export interface SavedChecksAdapter {
   clear: () => void;
 }
 
-const KEY = "sourcecheck.saved.v1";
+const KEY = "proofbase.saved.v1";
 const MAX_SAVED = 50;
 
 export const localSavedChecks: SavedChecksAdapter = {

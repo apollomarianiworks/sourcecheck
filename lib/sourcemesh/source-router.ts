@@ -33,12 +33,15 @@ export function routeSources(understanding: SourceMeshUnderstanding): SourceRout
 
   if (understanding.inputType === "health-claim") {
     adapterIds.add("pubmed");
+    adapterIds.add("semanticScholar");
     adapterIds.add("rss");
     rationale.push("Health claims need biomedical literature and official agency sources.");
   }
 
   if (understanding.inputType === "ai-deepfake-claim") {
     adapterIds.add("gdelt");
+    adapterIds.add("github");
+    adapterIds.add("stackexchange");
     adapterIds.add("hackernews");
     rationale.push("AI/deepfake claims need independent reporting or primary media-forensics sources.");
   }
@@ -46,6 +49,18 @@ export function routeSources(understanding: SourceMeshUnderstanding): SourceRout
   adapterIds.add("wikimedia");
   adapterIds.add("gdelt");
   adapterIds.add("rss");
+
+  if (understanding.categories.includes("technology")) {
+    adapterIds.add("github");
+    adapterIds.add("stackexchange");
+    adapterIds.add("semanticScholar");
+  }
+
+  if (understanding.categories.includes("science-research")) {
+    adapterIds.add("semanticScholar");
+    adapterIds.add("openalex");
+    adapterIds.add("crossref");
+  }
 
   return {
     categories: understanding.categories,

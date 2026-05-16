@@ -9,7 +9,7 @@ interface Props { result: CheckResult; }
 function buildShareText(result: CheckResult): string {
   const label = verdictLabel(result.evidenceVerdict);
   const score = result.sourceQualityScore !== null ? `· source-quality ${result.sourceQualityScore}/100 ` : "";
-  return `SourceCheck on "${result.input}": ${label} ${score}— see the evidence at`;
+  return `Proofbase on "${result.input}": ${label} ${score}— see the evidence at`;
 }
 
 export default function ShareButtons({ result }: Props) {
@@ -19,7 +19,7 @@ export default function ShareButtons({ result }: Props) {
     const text = buildShareText(result) + " " + (typeof window !== "undefined" ? window.location.href : "");
     try {
       if (navigator.share) {
-        await navigator.share({ title: "SourceCheck result", text });
+        await navigator.share({ title: "Proofbase result", text });
       } else {
         await navigator.clipboard.writeText(text);
       }

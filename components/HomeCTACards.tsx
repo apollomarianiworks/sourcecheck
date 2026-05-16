@@ -15,30 +15,29 @@ interface Card {
 
 const CARDS: Card[] = [
   {
-    icon: "🔍",
-    title: "Check a claim",
-    body: "Paste a statement and we'll cross-reference fact-checkers, news archives, and reference sources.",
-    action: { label: "Try an example", example: "do vaccines cause autism" },
+    icon: "R",
+    title: "Research",
+    body: "Paste a messy question and SourceMesh will classify it, search public evidence, and show what is missing.",
+    action: { label: "Try an example", example: "is the MrBeast lottery thing illegal?" },
   },
   {
-    icon: "🌐",
-    title: "Check a website",
-    body: "Paste a URL or domain. We'll score the source, analyze citation quality, and find independent coverage.",
-    action: { label: "Try an example", example: "reuters.com" },
+    icon: "S",
+    title: "Social evidence",
+    body: "Paste a public social URL. Proofbase checks public metadata, source transparency, and independent corroboration.",
+    action: { label: "Try an example", example: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
   },
   {
-    icon: "⚖",
-    title: "Compare sources",
-    body: "Look up two domains side-by-side. See category, reputation, and warning flags.",
-    action: { label: "Open Compare", href: "/compare" },
+    icon: "D",
+    title: "Debate toolkit",
+    body: "Build pro, con, and context evidence packets for policy, social, political, and philosophical topics.",
+    action: { label: "Open Debate", href: "/debate" },
   },
 ];
-
 export default function HomeCTACards({ onPickExample }: Props) {
   return (
     <section aria-labelledby="what-you-can-do" className="space-y-3">
       <h2 id="what-you-can-do" className="text-[13px] text-ink-muted text-center">
-        What you can do with SourceCheck
+        What you can do with Proofbase
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {CARDS.map((c) => (
@@ -54,14 +53,14 @@ export default function HomeCTACards({ onPickExample }: Props) {
                 onClick={() => onPickExample(c.action.example!)}
                 className="text-[12.5px] text-brand hover:underline self-start mt-1"
               >
-                {c.action.label} →
+                {c.action.label} -&gt;
               </button>
             ) : (
               <Link
                 href={c.action.href ?? "/"}
                 className="text-[12.5px] text-brand hover:underline self-start mt-1 no-underline"
               >
-                {c.action.label} →
+                {c.action.label} -&gt;
               </Link>
             )}
           </div>

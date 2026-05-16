@@ -131,6 +131,15 @@
       "limitations": "US Census Bureau news releases."
     },
     {
+      "id": "eurostat-updates",
+      "name": "Eurostat - Statistics Updates",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/catalogue/rss/en/statistics-update.rss",
+      "publisher": "ec.europa.eu",
+      "category": "government",
+      "claimCategories": ["finance-business", "politics-news", "science-research"],
+      "limitations": "Official Eurostat dataset update feed; useful for EU statistics context, not article analysis."
+    },
+    {
       "id": "ftc-press",
       "name": "FTC — Press Releases",
       "url": "https://www.ftc.gov/feeds/press-releases.xml",

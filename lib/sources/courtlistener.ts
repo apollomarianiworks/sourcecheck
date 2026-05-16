@@ -22,7 +22,7 @@ export const courtlistenerAdapter: SourceAdapter = {
     try {
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "SourceCheckBot/1.0 (public source verification)",
+          "User-Agent": "ProofbaseBot/1.0 (public source verification)",
           "Accept": "application/json",
           ...(apiKey ? { Authorization: `Token ${apiKey}` } : {}),
         },

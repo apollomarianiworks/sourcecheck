@@ -16,13 +16,13 @@ export const openalexAdapter: SourceAdapter = {
   async search(query, opts) {
     const start = Date.now();
     const max = Math.min(opts?.maxResults ?? 5, 10);
-    const mailto = "sourcecheck@example.invalid";
+    const mailto = "proofbase@example.invalid";
     const url = `${ENDPOINT}?search=${encodeURIComponent(query)}&per-page=${max}&mailto=${encodeURIComponent(mailto)}&select=id,doi,display_name,publication_year,publication_date,primary_location,authorships,abstract_inverted_index,referenced_works_count,is_retracted,is_paratext,type`;
 
     try {
       const res = await fetch(url, {
         headers: {
-          "User-Agent": `SourceCheckBot/1.0 (public source verification; mailto:${mailto})`,
+          "User-Agent": `ProofbaseBot/1.0 (public source verification; mailto:${mailto})`,
           "Accept": "application/json",
         },
         signal: opts?.signal ?? AbortSignal.timeout(opts?.timeoutMs ?? 10_000),

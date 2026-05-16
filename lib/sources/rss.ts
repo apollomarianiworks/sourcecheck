@@ -107,7 +107,7 @@ async function loadFeed(feed: FeedConfig, timeoutMs: number): Promise<CachedFeed
   try {
     const res = await fetch(feed.url, {
       headers: {
-        "User-Agent": "SourceCheckBot/1.0 (public source verification)",
+        "User-Agent": "ProofbaseBot/1.0 (public source verification)",
         "Accept": "application/rss+xml, application/xml, text/xml, */*;q=0.5",
       },
       signal: AbortSignal.timeout(timeoutMs),

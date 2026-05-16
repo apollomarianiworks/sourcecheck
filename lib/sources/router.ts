@@ -56,6 +56,7 @@ const RULES: CategoryRule[] = [
       /\b(?:bank|banking|mortgage|loan|credit|debt|bond|treasury)\b/i,
       /\b(?:crypto(?:currency)?|bitcoin|ethereum|btc|eth|blockchain)\b/i,
       /\b(?:earnings call|10[- ]k|10[- ]q|annual report|guidance|valuation)\b/i,
+      /\b(?:scam|fraud|giveaway|sweepstakes?|lotter(?:y|ies)|consumer alert|ftc)\b/i,
     ],
   },
   {
@@ -85,7 +86,7 @@ const RULES: CategoryRule[] = [
     patterns: [
       /\b(?:viral|tiktok|twitter|instagram|youtube|reddit|facebook|threads|bluesky)\b/i,
       /\b(?:celebrity|celeb|influencer|hoax|rumor|gossip)\b/i,
-      /\b(?:taylor swift|kim kardashian|kanye|beyonce|drake|elon musk\b)\b/i,
+      /\b(?:mrbeast|mr beast|taylor swift|kim kardashian|kanye|beyonce|drake|elon musk\b)\b/i,
     ],
   },
 ];
@@ -133,14 +134,14 @@ export function detectCategory(claim: string): { primary: ClaimCategory; all: Cl
  * Adapter ids are referenced — they must match `lib/sources/index.ts`.
  */
 export const ADAPTERS_BY_CATEGORY: Record<ClaimCategory, string[]> = {
-  "general":          ["googleFactCheck", "gdelt", "wikimedia", "rss"],
-  "politics-news":    ["googleFactCheck", "gdelt", "rss", "wikimedia"],
-  "health-medical":   ["pubmed", "googleFactCheck", "gdelt", "rss", "wikimedia"],
-  "science-research": ["arxiv", "openalex", "crossref", "wikimedia", "gdelt"],
+  "general":          ["googleFactCheck", "gdelt", "wikimedia", "rss", "brave", "newsdata", "mediastack"],
+  "politics-news":    ["googleFactCheck", "gdelt", "rss", "wikimedia", "brave", "newsdata", "mediastack"],
+  "health-medical":   ["pubmed", "semanticScholar", "googleFactCheck", "gdelt", "rss", "wikimedia", "newsdata"],
+  "science-research": ["semanticScholar", "arxiv", "openalex", "crossref", "wikimedia", "gdelt", "github"],
   "legal-court":      ["courtlistener", "googleFactCheck", "gdelt", "wikimedia"],
-  "finance-business": ["rss", "gdelt", "googleFactCheck", "wikimedia"],
-  "technology":       ["hackernews", "arxiv", "gdelt", "wikimedia"],
-  "celebrity-viral":  ["googleFactCheck", "gdelt", "reddit", "wikimedia"],
+  "finance-business": ["rss", "gdelt", "googleFactCheck", "wikimedia", "brave", "newsdata", "mediastack"],
+  "technology":       ["github", "stackexchange", "hackernews", "semanticScholar", "arxiv", "gdelt", "wikimedia", "brave"],
+  "celebrity-viral":  ["googleFactCheck", "gdelt", "reddit", "wikimedia", "rss", "brave", "newsdata"],
 };
 
 /** Build the full adapter id list for a claim, deduped and ordered. */

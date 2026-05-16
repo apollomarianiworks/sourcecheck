@@ -9,7 +9,7 @@ import { detectSocialUrl } from "@/lib/social/detect-social-url";
 const STOPWORDS = new Set([
   "a","an","and","are","about","be","but","by","did","do","does","for","from","has","have","i",
   "in","is","it","of","on","or","real","really","that","the","thing","this","to","true","was","were",
-  "what","when","where","who","why","with",
+  "what","when","where","who","why","with","best","good","bad","somebody","someone","something","stuff",
 ]);
 
 const SYNONYMS: Record<string, string[]> = {
@@ -19,7 +19,22 @@ const SYNONYMS: Record<string, string[]> = {
   fake: ["hoax", "false", "misleading"],
   deepfake: ["AI generated", "synthetic media", "voice clone"],
   cure: ["treatment", "clinical trial", "FDA warning"],
+  lawsuit: ["court filing", "complaint", "legal controversy"],
+  allegations: ["controversy", "claims", "investigation"],
 };
+
+const TYPO_NORMALIZATIONS: [RegExp, string][] = [
+  [/\bmr\s*beast\b/gi, "MrBeast"],
+  [/\bmrbeasts\b/gi, "MrBeast"],
+  [/\btik\s*tok\b/gi, "TikTok"],
+  [/\btwiter\b/gi, "Twitter"],
+  [/\byoutub\b/gi, "YouTube"],
+  [/\bgive\s*away\b/gi, "giveaway"],
+  [/\bsweepstake\b/gi, "sweepstakes"],
+  [/\billegal lottery\b/gi, "lottery legality"],
+  [/\bdeep fake\b/gi, "deepfake"],
+  [/\bcovid19\b/gi, "COVID-19"],
+];
 
 export function understandQuery(input: string): SourceMeshUnderstanding {
   const trimmed = input.trim();
@@ -32,6 +47,7 @@ export function understandQuery(input: string): SourceMeshUnderstanding {
   const inputType = classifyInput(trimmed, mode, social.isSocial, detected.primary, quality.isVague, quality.isOpinion);
   const hints = extractHints(convertedClaim);
   const entities = Array.from(new Set([...hints.people, ...hints.organizations, ...properEntities(convertedClaim)]));
+  const categories = refineCategories(detected.all, inputType, convertedClaim);
 
   return {
     originalInput: input,
@@ -40,7 +56,7 @@ export function understandQuery(input: string): SourceMeshUnderstanding {
     recognizedAs: recognizedAs(inputType, detected.all, social.platform),
     convertedClaim,
     entities,
-    categories: detected.all,
+    categories,
     hints,
     isVague: quality.isVague,
     isOpinion: quality.isOpinion,
@@ -50,7 +66,7 @@ export function understandQuery(input: string): SourceMeshUnderstanding {
 export function generateSearchVariants(understanding: SourceMeshUnderstanding): string[] {
   const base = understanding.convertedClaim || understanding.cleanedInput;
   const tokens = keywords(base);
-  const variants: string[] = [base];
+  const variants: string[] = [base, ...intentRewrites(base, understanding)];
 
   if (tokens.length >= 2) variants.push(tokens.join(" "));
   if (understanding.entities.length > 0) variants.push(`${understanding.entities.slice(0, 3).join(" ")} ${tokens.slice(0, 5).join(" ")}`.trim());
@@ -74,7 +90,7 @@ export function generateSearchVariants(understanding: SourceMeshUnderstanding): 
   return unique(variants)
     .map((v) => v.replace(/\s+/g, " ").trim())
     .filter((v) => v.length >= 3)
-    .slice(0, 10);
+    .slice(0, 14);
 }
 
 function classifyInput(
@@ -109,18 +125,71 @@ function cleanup(raw: string): string {
   const mode = detectMode(trimmed);
   if (mode === "url") return normalizeUrl(trimmed).url;
   if (mode === "domain") return normalizeDomain(trimmed);
-  return normalizeClaim(trimmed)
-    .replace(/\bmr beast\b/gi, "MrBeast")
-    .replace(/\btik tok\b/gi, "TikTok")
-    .replace(/\btwitter\b/gi, "X Twitter");
+  let out = normalizeClaim(trimmed);
+  for (const [pattern, replacement] of TYPO_NORMALIZATIONS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
 }
 
 function questionToClaim(text: string): string {
   return text
-    .replace(/^\s*(is|are|was|were|did|does|do|can|could|has|have)\s+/i, "")
+    .replace(/^\s*(is|are|was|were|did|does|do|can|could|has|have|should|would)\s+/i, "")
+    .replace(/^\s*(what'?s|whats|what is|explain|define|context for|articles about|best articles about)\s+/i, "")
     .replace(/\?+$/g, "")
     .replace(/\b(is|are) (that|this) (thing|claim) about\b/i, "")
+    .replace(/\b(the|that|this) thing about\b/i, "")
     .trim();
+}
+
+function refineCategories(categories: ClaimCategory[], inputType: SourceMeshInputType, text: string): ClaimCategory[] {
+  const out = new Set<ClaimCategory>(categories);
+  if (/\b(lottery|giveaway|sweepstakes|illegal|lawsuit|court|charged)\b/i.test(text)) out.add("legal-court");
+  if (/\b(lottery|giveaway|sweepstakes|scam|fraud|consumer alert|ftc)\b/i.test(text)) out.add("finance-business");
+  if (/\b(MrBeast|celebrity|influencer|viral|TikTok|YouTube|Instagram)\b/i.test(text)) out.add("celebrity-viral");
+  if (inputType === "ai-deepfake-claim") out.add("technology");
+  out.add("general");
+  return Array.from(out);
+}
+
+function intentRewrites(base: string, understanding: SourceMeshUnderstanding): string[] {
+  const rewrites: string[] = [];
+  const entities = understanding.entities.filter((e) => !/^(The|This|That)$/i.test(e));
+  const subject = entities[0] ?? importantSubject(base);
+
+  if (subject && /\b(lottery|giveaway|sweepstakes)\b/i.test(base)) {
+    rewrites.push(`${subject} giveaway controversy`);
+    rewrites.push(`${subject} sweepstakes legality`);
+    rewrites.push(`${subject} lottery allegations`);
+    rewrites.push(`FTC giveaway rules ${subject}`);
+    rewrites.push(`${subject} legal controversy`);
+  }
+
+  if (subject && /\b(scam|fraud)\b/i.test(base)) {
+    rewrites.push(`${subject} scam warning`);
+    rewrites.push(`${subject} FTC consumer alert`);
+    rewrites.push(`${subject} fraud allegations`);
+  }
+
+  if (subject && /\b(deepfake|AI generated|voice clone|synthetic)\b/i.test(base)) {
+    rewrites.push(`${subject} deepfake analysis`);
+    rewrites.push(`${subject} synthetic media verification`);
+    rewrites.push(`${subject} original video source`);
+  }
+
+  if (understanding.inputType === "vague-question" && subject) {
+    rewrites.push(`${subject} fact check`);
+    rewrites.push(`${subject} controversy evidence`);
+  }
+
+  return rewrites;
+}
+
+function importantSubject(text: string): string {
+  const proper = properEntities(text).find((entity) => !/^(What|This|That|The)$/i.test(entity));
+  if (proper) return proper;
+  const tokens = keywords(text);
+  return tokens.slice(0, 2).join(" ");
 }
 
 function extractHints(text: string): SourceMeshUnderstanding["hints"] {

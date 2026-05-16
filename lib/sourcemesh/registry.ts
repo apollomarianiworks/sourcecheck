@@ -13,9 +13,12 @@ export interface SourceRegistryEntry {
 }
 
 const OPTIONAL_INTEGRATIONS = [
-  { id: "brave", name: "Brave Search API", envVar: "BRAVE_SEARCH_API_KEY", notes: "Optional web search expansion; not required." },
-  { id: "newsapi", name: "NewsAPI", envVar: "NEWSAPI_KEY", notes: "Optional news API free-tier integration; not required." },
-  { id: "mediastack", name: "MediaStack", envVar: "MEDIASTACK_API_KEY", notes: "Optional news API free-tier integration; not required." },
+  { id: "brave", name: "Brave Search API", envVar: "BRAVE_SEARCH_API_KEY", notes: "Optional web search expansion; adapter is wired but inactive without this key." },
+  { id: "newsdata", name: "NewsData.io", envVar: "NEWSDATA_API_KEY", notes: "Optional news discovery; adapter is wired but inactive without this key." },
+  { id: "mediastack", name: "Mediastack", envVar: "MEDIASTACK_API_KEY", notes: "Optional news discovery; adapter is wired but inactive without this key." },
+  { id: "semanticScholarKey", name: "Semantic Scholar API key", envVar: "SEMANTIC_SCHOLAR_API_KEY", notes: "Optional; unauthenticated Semantic Scholar search still works with shared limits." },
+  { id: "githubToken", name: "GitHub token", envVar: "GITHUB_TOKEN", notes: "Optional; unauthenticated GitHub search still works with lower rate limits." },
+  { id: "newsapi", name: "NewsAPI", envVar: "NEWSAPI_KEY", notes: "Optional future news adapter; not required." },
 ];
 
 const QUALITY: Record<string, SourceMeshSourceChecked["quality"]> = {
@@ -30,6 +33,12 @@ const QUALITY: Record<string, SourceMeshSourceChecked["quality"]> = {
   hackernews: "weak",
   reddit: "weak",
   rss: "high",
+  semanticScholar: "high",
+  github: "context",
+  stackexchange: "context",
+  brave: "context",
+  newsdata: "context",
+  mediastack: "context",
 };
 
 const NOTES: Record<string, string> = {
@@ -44,6 +53,12 @@ const NOTES: Record<string, string> = {
   hackernews: "Public discussion; weak evidence, good for tech context discovery.",
   reddit: "Public posts only where accessible; weak evidence, useful for rumor/source tracing.",
   rss: "Curated public feeds, including agencies and fact-checkers; headline-level unless opened.",
+  semanticScholar: "Scholarly paper discovery across disciplines; no key required, optional key improves reliability.",
+  github: "Public repositories and issues; useful for technical provenance, security, and software claims.",
+  stackexchange: "Public technical Q&A; context for implementation claims, not primary evidence.",
+  brave: "Optional web search expansion when BRAVE_SEARCH_API_KEY exists.",
+  newsdata: "Optional news discovery when NEWSDATA_API_KEY exists.",
+  mediastack: "Optional news discovery when MEDIASTACK_API_KEY exists.",
 };
 
 export function sourceRegistry(): SourceRegistryEntry[] {
@@ -60,7 +75,7 @@ export function sourceRegistry(): SourceRegistryEntry[] {
     };
   });
 
-  const optional = OPTIONAL_INTEGRATIONS.map((entry) => ({
+  const optional = OPTIONAL_INTEGRATIONS.filter((entry) => !SOURCE_ADAPTERS[entry.id]).map((entry) => ({
     id: entry.id,
     name: entry.name,
     available: !!process.env[entry.envVar],

@@ -36,7 +36,7 @@ export default function ExportButton({ result }: Props) {
     const a = document.createElement("a");
     const ts = result.checkedAt.replace(/[:.]/g, "-");
     a.href = url;
-    a.download = `sourcecheck-${result.mode}-${ts}.md`;
+    a.download = `proofbase-${result.mode}-${ts}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

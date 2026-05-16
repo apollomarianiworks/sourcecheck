@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "How it works",
-  description: "How SourceCheck consults public APIs, what each source provides, and what the Source Quality Score does and does not mean.",
+  description: "How Proofbase consults public APIs, what each source provides, and what the Source Quality Score does and does not mean.",
   alternates: { canonical: "/how-it-works" },
 };
 
@@ -18,7 +18,7 @@ export default function HowItWorksPage() {
             How it works
           </h1>
           <p className="text-[14px] text-ink-body leading-relaxed">
-            SourceCheck is a source-quality scanner. It does not decide truth — it consults
+            Proofbase is a source-quality scanner. It does not decide truth — it consults
             public APIs and a local rules database, then shows you what each source said and how
             credible those sources are.
           </p>

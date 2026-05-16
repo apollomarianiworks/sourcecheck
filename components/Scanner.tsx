@@ -67,7 +67,7 @@ export default function Scanner() {
   useEffect(() => {
     // First-run hint logic — show until the user actually scans something
     try {
-      setHasUsedToolBefore(window.localStorage.getItem("sourcecheck.firstrun.dismissed") === "1");
+      setHasUsedToolBefore(window.localStorage.getItem("proofbase.firstrun.dismissed") === "1");
     } catch { /* ignore */ }
   }, []);
 
@@ -122,7 +122,7 @@ export default function Scanner() {
         setResult(r);
         appendHistory(r);
         setHistoryKey((k) => k + 1);
-        try { window.localStorage.setItem("sourcecheck.firstrun.dismissed", "1"); } catch { /* ignore */ }
+        try { window.localStorage.setItem("proofbase.firstrun.dismissed", "1"); } catch { /* ignore */ }
         setHasUsedToolBefore(true);
         setTimeout(() => {
           document.getElementById("scan-result")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -164,10 +164,10 @@ export default function Scanner() {
           ✓
         </div>
         <h1 id="hero-title" className="font-display text-[34px] md:text-[44px] font-bold text-ink leading-tight">
-          <span className="text-brand">Source</span>Check
+          <span className="text-brand">Proof</span>base
         </h1>
         <p className="text-[15px] md:text-base text-ink-body max-w-prose mx-auto">
-          Check claims. Inspect sources. Compare evidence.
+          The internet&apos;s research and debate operating system.
         </p>
 
         {/* Search box */}
@@ -190,7 +190,7 @@ export default function Scanner() {
               rows={1}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder='Paste a claim, article URL, or domain…  e.g. "do vaccines cause autism" or reuters.com'
+              placeholder='Paste a claim, article URL, social link, or domain... e.g. "is the MrBeast lottery thing illegal?"'
               disabled={loading}
               className="flex-1 resize-none bg-transparent text-[15px] text-ink placeholder-ink-dim disabled:opacity-50 leading-relaxed border-0 outline-none focus:ring-0"
               style={{ minHeight: "1.6rem", maxHeight: "8rem" }}
@@ -512,7 +512,7 @@ function ResultLayout({ result, onPickRelated }: { result: CheckResult; onPickRe
 
         {/* Disclaimer */}
         <div className="text-[12px] text-ink-dim border-t border-line-soft pt-3 leading-relaxed">
-          SourceCheck aggregates publicly available signals. It does not claim absolute truth.
+          Proofbase aggregates publicly available signals. It does not claim absolute truth.
           Source Quality Score reflects outlet credibility — not a verdict. Always consult primary sources.
         </div>
       </div>

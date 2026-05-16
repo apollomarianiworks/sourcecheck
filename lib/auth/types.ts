@@ -1,4 +1,4 @@
-export interface SourceCheckUserProfile {
+export interface ProofbaseUserProfile {
   id: string;
   displayName: string | null;
   email: string | null;
@@ -7,11 +7,11 @@ export interface SourceCheckUserProfile {
 }
 
 export interface AuthProviderAdapter {
-  id: SourceCheckUserProfile["provider"];
-  getCurrentUser: () => Promise<SourceCheckUserProfile | null>;
+  id: ProofbaseUserProfile["provider"];
+  getCurrentUser: () => Promise<ProofbaseUserProfile | null>;
 }
 
-export const LOCAL_USER_PROFILE: SourceCheckUserProfile = {
+export const LOCAL_USER_PROFILE: ProofbaseUserProfile = {
   id: "local",
   displayName: "Local user",
   email: null,

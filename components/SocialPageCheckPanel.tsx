@@ -34,6 +34,15 @@ export default function SocialPageCheckPanel({ report }: Props) {
 
       {m.errorMessage && <div className="text-[12px] text-verdict-amber">{m.errorMessage}</div>}
 
+      {m.likelyClaims.length > 0 && (
+        <div className="border border-line-soft rounded p-2">
+          <div className="text-[10px] text-ink-muted uppercase tracking-wide mb-1">Likely claim text</div>
+          <ul className="text-[12px] text-ink-body space-y-1 list-disc pl-5">
+            {m.likelyClaims.map((claim) => <li key={claim}>{claim}</li>)}
+          </ul>
+        </div>
+      )}
+
       <details className="text-[12px]">
         <summary className="text-link hover:underline">Social score factors</summary>
         <ul className="mt-2 space-y-1">

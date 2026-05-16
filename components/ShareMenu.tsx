@@ -27,7 +27,7 @@ export default function ShareMenu({ result }: Props) {
   const inputShort = result.input.length > 140 ? result.input.slice(0, 137).trim() + "…" : result.input;
 
   const summaryText =
-`SourceCheck — "${inputShort}"
+`Proofbase — "${inputShort}"
 
 ${verdict}.${score}
 ${result.summary}
@@ -35,8 +35,8 @@ ${result.summary}
 — ${result.evidence.length} source${result.evidence.length === 1 ? "" : "s"} reviewed${pageHref ? `\n${pageHref}` : ""}`;
 
   const sourceListText = result.evidence.length === 0
-    ? `SourceCheck — "${inputShort}"\n\nNo sources returned.`
-    : `SourceCheck — "${inputShort}"\n\nSources reviewed (${result.evidence.length}):\n` +
+    ? `Proofbase — "${inputShort}"\n\nNo sources returned.`
+    : `Proofbase — "${inputShort}"\n\nSources reviewed (${result.evidence.length}):\n` +
       result.evidence.map((e) => `- [${e.source}] ${e.title}\n  ${e.url}`).join("\n");
 
   const socialPost = buildSocialPost(verdict, inputShort, result.sourceQualityScore, pageHref);
@@ -65,7 +65,7 @@ ${result.summary}
 
   async function nativeShare() {
     if (!navigator.share) return copy("Summary", summaryText);
-    try { await navigator.share({ title: "SourceCheck result", text: summaryText }); }
+    try { await navigator.share({ title: "Proofbase result", text: summaryText }); }
     catch { /* user cancelled — ignore */ }
   }
 
@@ -142,7 +142,7 @@ function buildSocialPost(verdict: string, input: string, score: number | null, h
   const scorePart = score !== null ? ` · score ${score}/100` : "";
   const link = href ? ` ${href}` : "";
   // Conservative truncation: keep total ≤ 280
-  const TARGET = 280 - link.length - scorePart.length - 24; // 24 for "SourceCheck on \"\": " framing
+  const TARGET = 280 - link.length - scorePart.length - 24; // 24 for "Proofbase on \"\": " framing
   const trimmed = input.length > TARGET ? input.slice(0, Math.max(0, TARGET - 1)).trim() + "…" : input;
-  return `SourceCheck on "${trimmed}": ${v.toLowerCase()}${scorePart}.${link}`;
+  return `Proofbase on "${trimmed}": ${v.toLowerCase()}${scorePart}.${link}`;
 }

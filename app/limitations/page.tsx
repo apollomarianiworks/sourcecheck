@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Limitations",
-  description: "An honest list of what SourceCheck can and cannot tell you.",
+  description: "An honest list of what Proofbase can and cannot tell you.",
   alternates: { canonical: "/limitations" },
 };
 

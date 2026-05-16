@@ -54,7 +54,7 @@ export async function analyzePage(rawUrl: string): Promise<PageAnalysis> {
       method: "GET",
       redirect: "follow",
       headers: {
-        "User-Agent": "SourceCheckBot/1.0 (educational source quality scanner; single-page only)",
+        "User-Agent": "ProofbaseBot/1.0 (educational source quality scanner; single-page only)",
         "Accept": "text/html,application/xhtml+xml",
         "Accept-Language": "en-US,en;q=0.9",
       },
