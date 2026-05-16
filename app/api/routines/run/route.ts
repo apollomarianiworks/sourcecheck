@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runRoutine } from "@/lib/routines/run-routine";
 import type { ProofbaseRoutine } from "@/lib/routines/types";
+import type { SourceMeshConfidenceLabel } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  let body: { routine?: ProofbaseRoutine };
+  let body: { routine?: ProofbaseRoutine; previousConfidence?: SourceMeshConfidenceLabel | null };
   try {
     body = await req.json();
   } catch {
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await runRoutine(body.routine);
+    const result = await runRoutine(body.routine, { previousConfidence: body.previousConfidence ?? null });
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Routine failed." }, { status: 502 });
