@@ -48,6 +48,7 @@ import ProofbaseAssistant from "./ProofbaseAssistant";
 import TrainingFeedback from "./TrainingFeedback";
 import SearchPlanPanel from "./SearchPlanPanel";
 import InstallProofbaseButton from "./pwa/InstallProofbaseButton";
+import SourceVisualizationPanel from "./SourceVisualizationPanel";
 
 const STATUS_LINES = [
   "Understanding the query...",
@@ -610,6 +611,7 @@ function ResultLayout({
         </header>
 
         <UniversalSearchTabs result={result} activeTab={activeTab} onChange={setActiveTab} />
+        <SourceVisualizationPanel result={result} />
 
         <SourceMeshUnderstandingPanel report={result.sourceMesh} />
         <SearchPlanPanel report={result.sourceMesh} />

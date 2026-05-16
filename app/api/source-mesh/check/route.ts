@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { detectMode } from "@/lib/detect-mode";
 import { validateInput } from "@/lib/validate";
 import { runSourceMesh } from "@/lib/sourcemesh/search";
+import { guardApiAction, SecurityError } from "@/lib/security/guard";
 import type { CheckMode, CheckResult, EvidenceItem, ScanDepth, SourceMeshReport } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  try {
+    guardApiAction(req, "sourceMeshScan");
+  } catch (error) {
+    if (error instanceof SecurityError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "Something went wrong. Try again shortly." }, { status: 500 });
+  }
+
   let body: { input?: string; mode?: CheckMode; depth?: ScanDepth };
   try {
     body = await req.json();

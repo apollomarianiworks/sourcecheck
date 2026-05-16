@@ -17,6 +17,7 @@ import type {
   ClaimThread, Collection, DebateRoom, ResearchProfile, TopicFollow,
   ReportFlag, EvidenceDispute, MisinformationWarning,
 } from "./types";
+import { sanitizeTag, sanitizeUserText, validateSafeUrl } from "@/lib/security/sanitize";
 
 const KEYS = {
   claims:        "proofmedia.claims.v1",
@@ -74,7 +75,7 @@ function writeObject<T>(key: string, value: T | null): void {
 export const ClaimStore = {
   list:    (): ClaimThread[]    => readArray<ClaimThread>(KEYS.claims),
   get:     (id: string)          => ClaimStore.list().find((c) => c.id === id) ?? null,
-  upsert:  (c: ClaimThread)      => { const xs = ClaimStore.list().filter((x) => x.id !== c.id); writeArray(KEYS.claims, [c, ...xs]); return c; },
+  upsert:  (c: ClaimThread)      => { const clean = sanitizeClaim(c); const xs = ClaimStore.list().filter((x) => x.id !== clean.id); writeArray(KEYS.claims, [clean, ...xs]); return clean; },
   remove:  (id: string)          => writeArray(KEYS.claims, ClaimStore.list().filter((c) => c.id !== id)),
   clear:   ()                    => writeArray(KEYS.claims, []),
 };
@@ -83,7 +84,7 @@ export const ClaimStore = {
 export const CollectionStore = {
   list:    (): Collection[]      => readArray<Collection>(KEYS.collections),
   get:     (id: string)          => CollectionStore.list().find((c) => c.id === id) ?? null,
-  upsert:  (c: Collection)       => { const xs = CollectionStore.list().filter((x) => x.id !== c.id); writeArray(KEYS.collections, [c, ...xs]); return c; },
+  upsert:  (c: Collection)       => { const clean = sanitizeCollection(c); const xs = CollectionStore.list().filter((x) => x.id !== clean.id); writeArray(KEYS.collections, [clean, ...xs]); return clean; },
   remove:  (id: string)          => writeArray(KEYS.collections, CollectionStore.list().filter((c) => c.id !== id)),
   clear:   ()                    => writeArray(KEYS.collections, []),
 };
@@ -107,7 +108,7 @@ export const ProfileStore = {
 export const FollowStore = {
   list:   (): TopicFollow[]           => readArray<TopicFollow>(KEYS.follows),
   has:    (tag: string)               => FollowStore.list().some((f) => f.tag.toLowerCase() === tag.toLowerCase()),
-  add:    (tag: string)               => { if (FollowStore.has(tag)) return; writeArray(KEYS.follows, [{ tag, followedAt: new Date().toISOString() }, ...FollowStore.list()]); },
+  add:    (tag: string)               => { const clean = sanitizeTag(tag); if (!clean || FollowStore.has(clean)) return; writeArray(KEYS.follows, [{ tag: clean, followedAt: new Date().toISOString() }, ...FollowStore.list()]); },
   remove: (tag: string)               => writeArray(KEYS.follows, FollowStore.list().filter((f) => f.tag.toLowerCase() !== tag.toLowerCase())),
 };
 
@@ -134,4 +135,36 @@ export function localCounts() {
     follows:     FollowStore.list().length,
     profileSet:  ProfileStore.get() !== null,
   };
+}
+
+function sanitizeClaim(claim: ClaimThread): ClaimThread {
+  return {
+    ...claim,
+    title: sanitizeUserText(claim.title, 180),
+    body: sanitizeUserText(claim.body, 5000),
+    tags: claim.tags.map(sanitizeTag).filter(Boolean).slice(0, 10),
+    sourceUrl: safeNullableUrl(claim.sourceUrl),
+    evidence: claim.evidence.slice(0, 5).map((evidence) => ({
+      ...evidence,
+      url: safeNullableUrl(evidence.url) ?? "",
+      title: sanitizeUserText(evidence.title, 180),
+      snippet: sanitizeUserText(evidence.snippet, 500),
+      whyItMatters: evidence.whyItMatters ? sanitizeUserText(evidence.whyItMatters, 500) : null,
+    })).filter((evidence) => evidence.url),
+  };
+}
+
+function sanitizeCollection(collection: Collection): Collection {
+  return {
+    ...collection,
+    name: sanitizeUserText(collection.name, 120),
+    description: sanitizeUserText(collection.description, 1000),
+    tags: collection.tags.map(sanitizeTag).filter(Boolean).slice(0, 10),
+  };
+}
+
+function safeNullableUrl(url: string | null): string | null {
+  if (!url) return null;
+  const safe = validateSafeUrl(url);
+  return safe.ok ? safe.url ?? null : null;
 }

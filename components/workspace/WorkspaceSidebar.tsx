@@ -4,25 +4,32 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { loadHistory } from "@/lib/history";
 import { historyToWorkspaceItems, loadRecentWorkspace, loadSavedSessions } from "@/lib/workspace/sessions";
+import { CollectionStore, DebateStore } from "@/lib/proofmedia/store";
 import type { RecentWorkspaceItem, SavedSession } from "@/lib/workspace/sessions";
 
 const WORKSPACE_LINKS = [
   { href: "/", label: "Proofbase Search" },
   { href: "/explorer", label: "Evidence explorer" },
   { href: "/collections", label: "Pinned collections" },
+  { href: "/spaces", label: "Intelligence spaces" },
+  { href: "/investigations", label: "Investigations" },
   { href: "/routines", label: "Active routines" },
   { href: "/debate", label: "Debate briefs" },
   { href: "/community", label: "ProofMedia" },
+  { href: "/notifications", label: "Notifications" },
+  { href: "/exports", label: "Exports" },
 ];
 
 export default function WorkspaceSidebar() {
   const [saved, setSaved] = useState<SavedSession[]>([]);
   const [recent, setRecent] = useState<RecentWorkspaceItem[]>([]);
+  const [counts, setCounts] = useState({ collections: 0, debates: 0 });
 
   useEffect(() => {
     setSaved(loadSavedSessions());
     const workspaceRecent = loadRecentWorkspace();
     setRecent(workspaceRecent.length > 0 ? workspaceRecent : historyToWorkspaceItems(loadHistory()));
+    setCounts({ collections: CollectionStore.list().length, debates: DebateStore.list().length });
   }, []);
 
   return (
@@ -41,6 +48,20 @@ export default function WorkspaceSidebar() {
               </Link>
             ))}
           </nav>
+        </section>
+
+        <section className="space-y-2">
+          <div className="text-[11px] uppercase tracking-wide text-ink-dim">Pinned research</div>
+          <div className="grid grid-cols-2 gap-2">
+            <Link href="/collections" className="rounded border border-line-soft bg-page p-2 text-center hover:no-underline">
+              <div className="text-[16px] font-bold text-ink">{counts.collections}</div>
+              <div className="text-[10px] text-ink-dim">collections</div>
+            </Link>
+            <Link href="/debates" className="rounded border border-line-soft bg-page p-2 text-center hover:no-underline">
+              <div className="text-[16px] font-bold text-ink">{counts.debates}</div>
+              <div className="text-[10px] text-ink-dim">debates</div>
+            </Link>
+          </div>
         </section>
 
         <section className="space-y-2">

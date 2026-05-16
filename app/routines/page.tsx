@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import RoutineBuilder from "@/components/RoutineBuilder";
+import RoutineDashboard from "@/components/proofmedia/RoutineDashboard";
 
 export const metadata: Metadata = {
   title: "Routines",
@@ -16,6 +17,7 @@ export default function RoutinesPage() {
           Routines are saved evidence workflows for topics, debates, sources, social narratives, digests, trend scans, article finding, and context monitoring. They run manually today and expose every source searched.
         </p>
       </section>
+      <RoutineDashboard />
       <RoutineBuilder />
     </main>
   );

@@ -1,221 +1,467 @@
 rules_version = '2';
 
-// Proofbase / ProofMedia Firestore rules — PASS 18.
+// Proofbase / ProofMedia Firestore rules - PASS 24 security hardening.
 //
-// Posture:
-//   - Public reads ARE allowed on user profiles, claims (visibility=public,
-//     status=active), and active comments.
-//   - Writes require auth.
-//   - Users can edit/delete only their own content.
-//   - Auth fields (authorId, role, restrictions, reputationScore, status) are
-//     immutable from the client. Moderation moves through Cloud Functions /
-//     server-side admin SDK only.
-//   - Validation here MIRRORS lib/community/validation.ts.
+// Client code may validate for UX, but these rules are the enforcement layer:
+// ownership, allowed fields, protected fields, public/private visibility, and
+// moderation fields are checked here.
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ───────────────────────────────────────────────
-    // helpers
-    // ───────────────────────────────────────────────
-
-    function isSignedIn() { return request.auth != null; }
-    function isMe(uid)    { return isSignedIn() && request.auth.uid == uid; }
-
-    function isString(v)  { return v is string; }
-    function strLen(v)    { return v.size(); }
-    function isUrl(v)     { return isString(v) && (v.matches('^https?://.+')); }
-    function isTimestamp(v) { return v is timestamp; }
-
-    // True iff every element of `arr` is a string URL.
-    function allUrls(arr) {
-      return arr is list
-          && arr.size() <= 5
-          && arr.size() == arr.removeAll([null]).size()
-          && true;  // per-element regex enforced via composer + restrictions
+    function signedIn() {
+      return request.auth != null;
     }
 
-    function notSpammy(s) {
-      return !s.matches('.*!{5,}.*');
+    function isMe(uid) {
+      return signedIn() && request.auth.uid == uid;
     }
 
-    // ───────────────────────────────────────────────
-    // users
-    // ───────────────────────────────────────────────
+    function isAdmin() {
+      return signedIn()
+        && (request.auth.token.admin == true
+          || request.auth.token.role == 'admin'
+          || request.auth.token.role == 'moderator');
+    }
+
+    function userExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function userData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function restrictions(uid) {
+      return userExists(uid) && userData(uid).restrictions is list
+        ? userData(uid).restrictions
+        : [];
+    }
+
+    function notBanned(uid) {
+      return !('banned' in restrictions(uid)) && (!userExists(uid) || userData(uid).status == 'active');
+    }
+
+    function canWrite(uid, action) {
+      return isMe(uid) && notBanned(uid) && !(('no-' + action) in restrictions(uid));
+    }
+
+    function isString(v) {
+      return v is string;
+    }
+
+    function isNullableString(v) {
+      return v == null || v is string;
+    }
+
+    function validUrl(v) {
+      return isString(v)
+        && v.size() <= 2048
+        && v.matches('^https?://[^\\s<>"`]+$')
+        && !v.matches('(?i)^(javascript|data|file|chrome|extension):.*')
+        && !v.matches('(?i)^https?://(localhost|127\\.|0\\.|10\\.|169\\.254\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|\\[::1\\]).*');
+    }
+
+    function validUrlList(v, maxCount) {
+      return v is list && v.size() <= maxCount;
+    }
+
+    function validTags(v) {
+      return v is list && v.size() <= 10;
+    }
+
+    function validUsername(v) {
+      return isString(v) && v.size() >= 3 && v.size() <= 24 && v.matches('^[A-Za-z0-9][A-Za-z0-9_-]{1,22}[A-Za-z0-9]$');
+    }
+
+    function validDisplayName(v) {
+      return isString(v) && v.size() >= 1 && v.size() <= 50 && !v.matches('.*<[^>]+>.*');
+    }
+
+    function validBio(v) {
+      return v == null || (isString(v) && v.size() <= 300 && !v.matches('.*<[^>]+>.*'));
+    }
+
+    function validPublicStatus(data) {
+      return data.status in ['active', 'flagged'] && data.moderationStatus in ['clear', 'needs-review'];
+    }
+
+    function publicContent(data) {
+      return data.visibility == 'public'
+        && data.status == 'active'
+        && data.moderationStatus in ['clear', null];
+    }
+
+    function noProtectedUserChange() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'role',
+        'restrictions',
+        'reputationScore',
+        'followerCount',
+        'followingCount',
+        'postCount',
+        'likeCount',
+        'status',
+        'moderationStatus'
+      ]);
+    }
+
+    function noProtectedContentChange() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'authorId',
+        'authorUsername',
+        'authorDisplayName',
+        'authorPhotoURL',
+        'status',
+        'moderationStatus',
+        'score',
+        'likeCount',
+        'saveCount',
+        'commentCount',
+        'reportCount',
+        'createdAt'
+      ]);
+    }
 
     match /users/{uid} {
-      allow read: if true;
+      allow read: if isMe(uid) || (resource.data.status == 'active' && resource.data.moderationStatus in ['clear', null]);
 
-      // Self-create on first sign-in
       allow create: if isMe(uid)
-                    && request.resource.data.uid == uid
-                    && isString(request.resource.data.username)
-                    && strLen(request.resource.data.username) >= 2
-                    && strLen(request.resource.data.username) <= 40
-                    && isString(request.resource.data.displayName)
-                    && strLen(request.resource.data.displayName) <= 60
-                    && request.resource.data.role == 'user'
-                    && request.resource.data.reputationScore == 0
-                    && request.resource.data.restrictions.size() == 0;
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'username',
+          'displayName',
+          'photoURL',
+          'bio',
+          'email',
+          'emailVerified',
+          'createdAt',
+          'updatedAt',
+          'reputationScore',
+          'role',
+          'restrictions',
+          'followerCount',
+          'followingCount',
+          'postCount',
+          'likeCount',
+          'status',
+          'moderationStatus'
+        ])
+        && request.resource.data.uid == uid
+        && validUsername(request.resource.data.username)
+        && validDisplayName(request.resource.data.displayName)
+        && validBio(request.resource.data.bio)
+        && isNullableString(request.resource.data.photoURL)
+        && (request.resource.data.photoURL == null || validUrl(request.resource.data.photoURL))
+        && request.resource.data.email == null
+        && request.resource.data.emailVerified == request.auth.token.email_verified
+        && request.resource.data.role == 'user'
+        && request.resource.data.restrictions == []
+        && request.resource.data.reputationScore == 0
+        && request.resource.data.followerCount == 0
+        && request.resource.data.followingCount == 0
+        && request.resource.data.postCount == 0
+        && request.resource.data.likeCount == 0
+        && request.resource.data.status == 'active'
+        && request.resource.data.moderationStatus == 'clear';
 
-      // Self-edit limited to safe fields. Role / reputation / restrictions are
-      // server-managed and CANNOT be set from a client write.
-      allow update: if isMe(uid)
-                    && request.resource.data.uid == uid
-                    && request.resource.data.role == resource.data.role
-                    && request.resource.data.restrictions == resource.data.restrictions
-                    && request.resource.data.reputationScore == resource.data.reputationScore
-                    && (!('displayName' in request.resource.data) || strLen(request.resource.data.displayName) <= 60)
-                    && (!('bio' in request.resource.data) || strLen(request.resource.data.bio) <= 400)
-                    && (!('username' in request.resource.data) || strLen(request.resource.data.username) <= 40);
+      allow update: if canWrite(uid, 'profile-edit')
+        && request.resource.data.uid == uid
+        && noProtectedUserChange()
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'username',
+          'displayName',
+          'photoURL',
+          'bio',
+          'email',
+          'emailVerified',
+          'createdAt',
+          'updatedAt',
+          'reputationScore',
+          'role',
+          'restrictions',
+          'followerCount',
+          'followingCount',
+          'postCount',
+          'likeCount',
+          'status',
+          'moderationStatus'
+        ])
+        && validUsername(request.resource.data.username)
+        && validDisplayName(request.resource.data.displayName)
+        && validBio(request.resource.data.bio)
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.emailVerified == request.auth.token.email_verified
+        && (request.resource.data.photoURL == null || validUrl(request.resource.data.photoURL));
 
-      // Users cannot delete their account from the client (would orphan posts).
       allow delete: if false;
     }
-
-    // ───────────────────────────────────────────────
-    // claims
-    // ───────────────────────────────────────────────
 
     match /claims/{claimId} {
-      // Public reads: only active + public claims, plus the author seeing their own drafts.
-      allow read: if (resource.data.visibility == 'public' && resource.data.status == 'active')
-                  || (isSignedIn() && resource.data.authorId == request.auth.uid);
+      allow read: if publicContent(resource.data) || (signedIn() && resource.data.authorId == request.auth.uid) || isAdmin();
 
-      allow create: if isSignedIn()
-                    && request.resource.data.authorId == request.auth.uid
-                    && isString(request.resource.data.title)
-                    && strLen(request.resource.data.title) >= 8
-                    && strLen(request.resource.data.title) <= 180
-                    && (!('body' in request.resource.data) || strLen(request.resource.data.body) <= 5000)
-                    && request.resource.data.category in ['politics-news','health-medical','science-research','legal-court','finance-business','technology','celebrity-viral','general']
-                    && request.resource.data.visibility in ['public','private','draft']
-                    && request.resource.data.tags is list
-                    && request.resource.data.tags.size() <= 10
-                    && request.resource.data.evidenceUrls is list
-                    && request.resource.data.evidenceUrls.size() <= 5
-                    && request.resource.data.status == 'active'
-                    && request.resource.data.score == 0
-                    && request.resource.data.commentCount == 0
-                    && notSpammy(request.resource.data.title);
+      allow create: if canWrite(request.auth.uid, 'post')
+        && request.resource.data.keys().hasOnly([
+          'authorId',
+          'authorUsername',
+          'authorDisplayName',
+          'authorPhotoURL',
+          'title',
+          'body',
+          'category',
+          'tags',
+          'evidenceUrls',
+          'sourceMeshSummary',
+          'visibility',
+          'createdAt',
+          'updatedAt',
+          'score',
+          'commentCount',
+          'evidenceCount',
+          'status',
+          'moderationStatus'
+        ])
+        && request.resource.data.authorId == request.auth.uid
+        && request.auth.token.email_verified == true
+        && isString(request.resource.data.title)
+        && request.resource.data.title.size() >= 8
+        && request.resource.data.title.size() <= 180
+        && !request.resource.data.title.matches('.*<[^>]+>.*')
+        && isString(request.resource.data.body)
+        && request.resource.data.body.size() <= 5000
+        && !request.resource.data.body.matches('.*<[^>]+>.*')
+        && request.resource.data.category in ['politics-news','health-medical','science-research','legal-court','finance-business','technology','celebrity-viral','general']
+        && request.resource.data.visibility in ['public','private','draft']
+        && validTags(request.resource.data.tags)
+        && validUrlList(request.resource.data.evidenceUrls, 5)
+        && request.resource.data.sourceMeshSummary == null
+        && request.resource.data.score == 0
+        && request.resource.data.commentCount == 0
+        && request.resource.data.evidenceCount == request.resource.data.evidenceUrls.size()
+        && validPublicStatus(request.resource.data);
 
-      // Authors can edit their own claim body/title/tags. They CANNOT change
-      // authorId, status, score, commentCount, or sourceMeshSummary (those are
-      // server-managed).
-      allow update: if isSignedIn()
-                    && resource.data.authorId == request.auth.uid
-                    && request.resource.data.authorId == resource.data.authorId
-                    && request.resource.data.status == resource.data.status
-                    && request.resource.data.score == resource.data.score
-                    && request.resource.data.commentCount == resource.data.commentCount
-                    && (!('title' in request.resource.data) || (strLen(request.resource.data.title) >= 8 && strLen(request.resource.data.title) <= 180))
-                    && (!('body' in request.resource.data) || strLen(request.resource.data.body) <= 5000);
+      allow update: if signedIn()
+        && resource.data.authorId == request.auth.uid
+        && notBanned(request.auth.uid)
+        && noProtectedContentChange()
+        && request.resource.data.keys().hasOnly([
+          'authorId',
+          'authorUsername',
+          'authorDisplayName',
+          'authorPhotoURL',
+          'title',
+          'body',
+          'category',
+          'tags',
+          'evidenceUrls',
+          'sourceMeshSummary',
+          'visibility',
+          'createdAt',
+          'updatedAt',
+          'score',
+          'commentCount',
+          'evidenceCount',
+          'status',
+          'moderationStatus'
+        ])
+        && request.resource.data.title.size() >= 8
+        && request.resource.data.title.size() <= 180
+        && request.resource.data.body.size() <= 5000
+        && request.resource.data.visibility in ['public','private','draft']
+        && validTags(request.resource.data.tags)
+        && validUrlList(request.resource.data.evidenceUrls, 5)
+        && request.resource.data.evidenceCount == request.resource.data.evidenceUrls.size();
 
-      // Authors can soft-delete by setting status, but we route that as a
-      // dedicated delete — keep client behaviour simple: deletes allowed by author.
-      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.authorId == request.auth.uid && notBanned(request.auth.uid);
     }
-
-    // SourceMesh summary write — allowed only when the author re-runs the
-    // analysis on their own claim. Tightly scoped to one field.
-    // (Handled via the same `update` rule above as long as scalar fields stay
-    // unchanged; we don't need a separate sub-rule.)
-
-    // ───────────────────────────────────────────────
-    // comments
-    // ───────────────────────────────────────────────
 
     match /comments/{commentId} {
-      allow read: if resource.data.status == 'active';
+      allow read: if resource.data.status == 'active'
+        || (signedIn() && resource.data.authorId == request.auth.uid)
+        || isAdmin();
 
-      allow create: if isSignedIn()
-                    && request.resource.data.authorId == request.auth.uid
-                    && isString(request.resource.data.claimId)
-                    && request.resource.data.type in ['comment','rebuttal','context']
-                    && isString(request.resource.data.body)
-                    && strLen(request.resource.data.body) >= 5
-                    && strLen(request.resource.data.body) <= 2000
-                    && request.resource.data.evidenceUrls is list
-                    && request.resource.data.evidenceUrls.size() <= 5
-                    // Rebuttals + context notes MUST cite at least one source.
-                    && (
-                         (request.resource.data.type == 'comment')
-                         || (request.resource.data.evidenceUrls.size() >= 1)
-                       )
-                    && request.resource.data.status == 'active'
-                    && request.resource.data.score == 0
-                    && notSpammy(request.resource.data.body);
+      allow create: if canWrite(request.auth.uid, 'comment')
+        && request.auth.token.email_verified == true
+        && request.resource.data.keys().hasOnly([
+          'claimId',
+          'authorId',
+          'authorUsername',
+          'authorDisplayName',
+          'authorPhotoURL',
+          'body',
+          'type',
+          'evidenceUrls',
+          'createdAt',
+          'updatedAt',
+          'score',
+          'status'
+        ])
+        && request.resource.data.authorId == request.auth.uid
+        && isString(request.resource.data.claimId)
+        && exists(/databases/$(database)/documents/claims/$(request.resource.data.claimId))
+        && get(/databases/$(database)/documents/claims/$(request.resource.data.claimId)).data.status == 'active'
+        && request.resource.data.type in ['comment','rebuttal','context']
+        && isString(request.resource.data.body)
+        && request.resource.data.body.size() >= 5
+        && request.resource.data.body.size() <= 2000
+        && !request.resource.data.body.matches('.*<[^>]+>.*')
+        && validUrlList(request.resource.data.evidenceUrls, 5)
+        && (request.resource.data.type == 'comment' || request.resource.data.evidenceUrls.size() >= 1)
+        && request.resource.data.status == 'active'
+        && request.resource.data.score == 0;
 
-      // Authors can edit their own body. Auth fields and counters are locked.
-      allow update: if isSignedIn()
-                    && resource.data.authorId == request.auth.uid
-                    && request.resource.data.authorId == resource.data.authorId
-                    && request.resource.data.claimId  == resource.data.claimId
-                    && request.resource.data.status   == resource.data.status
-                    && request.resource.data.score    == resource.data.score
-                    && request.resource.data.type     == resource.data.type
-                    && (!('body' in request.resource.data) || (strLen(request.resource.data.body) >= 5 && strLen(request.resource.data.body) <= 2000));
+      allow update: if signedIn()
+        && resource.data.authorId == request.auth.uid
+        && notBanned(request.auth.uid)
+        && request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.claimId == resource.data.claimId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.score == resource.data.score
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.body.size() >= 5
+        && request.resource.data.body.size() <= 2000
+        && validUrlList(request.resource.data.evidenceUrls, 5);
 
-      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.authorId == request.auth.uid && notBanned(request.auth.uid);
     }
 
-    // ───────────────────────────────────────────────
-    // saves — per-user bookmarks
-    // ───────────────────────────────────────────────
-
-    match /saves/{saveId} {
-      allow read:   if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn()
-                    && request.resource.data.userId == request.auth.uid
-                    && request.resource.data.targetType in ['claim','comment']
-                    && isString(request.resource.data.targetId);
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    match /follows/{followId} {
+      allow read: if signedIn() && resource.data.followerId == request.auth.uid;
+      allow create: if canWrite(request.auth.uid, 'follow')
+        && request.resource.data.keys().hasOnly(['followerId', 'targetType', 'targetId', 'createdAt'])
+        && request.resource.data.followerId == request.auth.uid
+        && request.resource.data.targetType in ['user','topic']
+        && isString(request.resource.data.targetId)
+        && (request.resource.data.targetType != 'user' || userExists(request.resource.data.targetId));
       allow update: if false;
+      allow delete: if signedIn() && resource.data.followerId == request.auth.uid;
     }
 
-    // ───────────────────────────────────────────────
-    // votes — at most one per (user, target)
-    // ───────────────────────────────────────────────
+    match /likes/{likeId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if canWrite(request.auth.uid, 'like')
+        && request.resource.data.keys().hasOnly(['userId', 'targetType', 'targetId', 'createdAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.targetType in ['claim','comment']
+        && isString(request.resource.data.targetId);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
 
     match /votes/{voteId} {
-      // Allow reading your own vote so the UI can highlight it.
-      allow read:   if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn()
-                    && request.resource.data.userId == request.auth.uid
-                    && request.resource.data.voteType in ['up','down']
-                    && request.resource.data.targetType in ['claim','comment'];
-      allow update: if isSignedIn()
-                    && resource.data.userId == request.auth.uid
-                    && request.resource.data.userId == resource.data.userId
-                    && request.resource.data.targetType == resource.data.targetType
-                    && request.resource.data.targetId   == resource.data.targetId
-                    && request.resource.data.voteType in ['up','down'];
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if canWrite(request.auth.uid, 'like')
+        && request.resource.data.keys().hasOnly(['userId', 'targetType', 'targetId', 'voteType', 'createdAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.targetType in ['claim','comment']
+        && request.resource.data.voteType in ['up','down']
+        && isString(request.resource.data.targetId);
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.targetType == resource.data.targetType
+        && request.resource.data.targetId == resource.data.targetId
+        && request.resource.data.voteType in ['up','down'];
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // ───────────────────────────────────────────────
-    // reports — write-only from the client; reviewed server-side
-    // ───────────────────────────────────────────────
+    match /saves/{saveId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if canWrite(request.auth.uid, 'save')
+        && request.resource.data.keys().hasOnly(['userId', 'targetType', 'targetId', 'createdAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.targetType in ['claim','comment','collection','routine']
+        && isString(request.resource.data.targetId);
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
 
     match /reports/{reportId} {
-      // Don't let the public read the report queue.
-      allow read:   if false;
-      allow create: if isSignedIn()
-                    && request.resource.data.reporterId == request.auth.uid
-                    && request.resource.data.targetType in ['claim','comment','user']
-                    && isString(request.resource.data.targetId)
-                    && isString(request.resource.data.reason)
-                    && isString(request.resource.data.details)
-                    && strLen(request.resource.data.details) >= 10
-                    && strLen(request.resource.data.details) <= 1000
-                    && request.resource.data.status == 'open';
-      allow update: if false;
-      allow delete: if false;
+      allow read: if isAdmin();
+      allow create: if canWrite(request.auth.uid, 'report')
+        && request.resource.data.keys().hasOnly(['reporterId', 'targetType', 'targetId', 'reason', 'details', 'createdAt', 'status'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.targetType in ['claim','comment','user']
+        && isString(request.resource.data.targetId)
+        && (request.resource.data.targetType != 'user' || userExists(request.resource.data.targetId))
+        && isString(request.resource.data.reason)
+        && request.resource.data.reason.size() <= 80
+        && isString(request.resource.data.details)
+        && request.resource.data.details.size() >= 10
+        && request.resource.data.details.size() <= 1000
+        && !request.resource.data.details.matches('.*<[^>]+>.*')
+        && request.resource.data.status == 'open';
+      allow update, delete: if false;
     }
 
-    // ───────────────────────────────────────────────
-    // catch-all
-    // ───────────────────────────────────────────────
+    match /collections/{collectionId} {
+      allow read: if resource.data.visibility == 'public'
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || isAdmin();
+      allow create: if signedIn()
+        && notBanned(request.auth.uid)
+        && request.resource.data.keys().hasOnly(['ownerId', 'title', 'description', 'visibility', 'tags', 'itemIds', 'createdAt', 'updatedAt', 'status', 'moderationStatus'])
+        && request.resource.data.ownerId == request.auth.uid
+        && isString(request.resource.data.title)
+        && request.resource.data.title.size() >= 1
+        && request.resource.data.title.size() <= 120
+        && isString(request.resource.data.description)
+        && request.resource.data.description.size() <= 1000
+        && request.resource.data.visibility in ['public','private']
+        && validTags(request.resource.data.tags)
+        && request.resource.data.itemIds is list
+        && request.resource.data.itemIds.size() <= 200
+        && validPublicStatus(request.resource.data);
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && notBanned(request.auth.uid)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.moderationStatus == resource.data.moderationStatus
+        && request.resource.data.title.size() >= 1
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.description.size() <= 1000
+        && request.resource.data.visibility in ['public','private'];
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid && notBanned(request.auth.uid);
+    }
+
+    match /routines/{routineId} {
+      allow read: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn()
+        && notBanned(request.auth.uid)
+        && request.resource.data.keys().hasOnly(['ownerId', 'title', 'description', 'prompt', 'visibility', 'createdAt', 'updatedAt', 'lastRunAt', 'status'])
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.visibility in ['private-local','share-ready','public-future']
+        && isString(request.resource.data.title)
+        && request.resource.data.title.size() <= 120
+        && isString(request.resource.data.description)
+        && request.resource.data.description.size() <= 1000
+        && isString(request.resource.data.prompt)
+        && request.resource.data.prompt.size() <= 1000
+        && request.resource.data.status == 'active';
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && notBanned(request.auth.uid)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.description.size() <= 1000
+        && request.resource.data.prompt.size() <= 1000;
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid && notBanned(request.auth.uid);
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update, delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if false;
+    }
+
+    match /auditLogs/{auditId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /moderationActions/{actionId} {
+      allow read, write: if isAdmin();
+    }
 
     match /{document=**} {
       allow read, write: if false;

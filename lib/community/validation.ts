@@ -8,6 +8,14 @@
  * composer; the user must fix the input before publishing.
  */
 
+import {
+  validateEvidenceUrlsInput,
+  validatePlainText,
+  validatePostInput,
+  validateTagsInput,
+} from "@/lib/security/validators";
+import { validateSafeUrl } from "@/lib/security/sanitize";
+
 export const MIN_TITLE_LENGTH      = 8;
 export const MAX_TITLE_LENGTH      = 180;
 export const MAX_BODY_LENGTH       = 5_000;
@@ -38,14 +46,11 @@ export type CommentType = typeof ALLOWED_COMMENT_TYPES[number];
 
 export interface ValidationResult { ok: boolean; message?: string; field?: string; }
 
-const URL_RE = /^https?:\/\/[^\s<>"'`]+$/i;
-
 export function validateUrl(url: string): ValidationResult {
-  const u = (url ?? "").trim();
-  if (!u)                  return { ok: false, message: "URL is required.", field: "url" };
-  if (u.length > 2048)     return { ok: false, message: "URL is too long.", field: "url" };
-  if (!URL_RE.test(u))     return { ok: false, message: "Must be a real http(s) URL.", field: "url" };
-  return { ok: true };
+  const result = validateSafeUrl(url);
+  return result.ok
+    ? { ok: true }
+    : { ok: false, message: result.message ?? "This link type is not allowed.", field: "url" };
 }
 
 export function validateTitle(title: string): ValidationResult {
@@ -59,6 +64,8 @@ export function validateBody(body: string, opts?: { required?: boolean; min?: nu
   const b = (body ?? "").trim();
   const min = opts?.min ?? 0;
   const max = opts?.max ?? MAX_BODY_LENGTH;
+  const result = validatePlainText(body, { field: "body", label: "Body", min, max, required: opts?.required });
+  return result.ok ? { ok: true } : { ok: false, field: result.field, message: result.message };
   if (opts?.required && b.length === 0) return { ok: false, field: "body", message: "Body is required." };
   if (b.length < min) return { ok: false, field: "body", message: `Needs at least ${min} characters.` };
   if (b.length > max) return { ok: false, field: "body", message: `Too long — ${max} characters max.` };
@@ -72,6 +79,8 @@ export function validateCategory(cat: string): ValidationResult {
 }
 
 export function validateTags(tags: string[]): ValidationResult {
+  const guarded = validateTagsInput(tags);
+  if (!guarded.ok) return { ok: false, field: guarded.field, message: guarded.message };
   if (!Array.isArray(tags)) return { ok: false, field: "tags", message: "Tags must be a list." };
   if (tags.length > MAX_TAGS) return { ok: false, field: "tags", message: `Up to ${MAX_TAGS} tags.` };
   for (const t of tags) {
@@ -86,6 +95,8 @@ export function validateTags(tags: string[]): ValidationResult {
 }
 
 export function validateEvidenceUrls(urls: string[]): ValidationResult {
+  const guarded = validateEvidenceUrlsInput(urls);
+  if (!guarded.ok) return { ok: false, field: guarded.field, message: guarded.message };
   if (!Array.isArray(urls)) return { ok: false, field: "evidenceUrls", message: "Evidence must be a list." };
   if (urls.length > MAX_EVIDENCE_LINKS)
     return { ok: false, field: "evidenceUrls", message: `Up to ${MAX_EVIDENCE_LINKS} evidence links.` };
@@ -124,6 +135,13 @@ export interface ComposeClaim {
 }
 
 export function validateClaim(c: ComposeClaim): ValidationResult {
+  const guarded = validatePostInput({
+    title: c.title,
+    body: c.body ?? "",
+    tags: c.tags,
+    evidenceUrls: c.evidenceUrls,
+  });
+  if (!guarded.ok) return { ok: false, field: guarded.field, message: guarded.message };
   const checks: ValidationResult[] = [
     validateTitle(c.title),
     validateBody(c.body ?? "", { required: false }),

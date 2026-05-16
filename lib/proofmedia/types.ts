@@ -276,6 +276,56 @@ export type ReportType =
 
 export type ReportStatus = "open" | "reviewing" | "resolved" | "dismissed";
 
+export type UserRestriction =
+  | "banned"
+  | "no-post"
+  | "no-comment"
+  | "no-like"
+  | "no-save"
+  | "no-follow"
+  | "no-report"
+  | "no-profile-edit"
+  | "no-routine-run"
+  | "needs-review";
+
+export type ModerationAction =
+  | "mark-under-review"
+  | "remove-content"
+  | "restore-content"
+  | "restrict-user"
+  | "clear-restriction"
+  | "resolve-report"
+  | "dismiss-report";
+
+export interface AuditLogEvent {
+  id: string;
+  action: ModerationAction | "protected-field-edit" | "rate-limited" | "unsafe-url" | "spam-detected";
+  actorId: string | null;
+  targetKind: "claim" | "comment" | "profile" | "collection" | "routine" | "report" | "api";
+  targetId: string | null;
+  message: string;
+  severity: "info" | "warning" | "critical";
+  createdAt: string;
+}
+
+export interface AbuseSignal {
+  kind:
+    | "repeated-content"
+    | "link-spam"
+    | "duplicate-evidence"
+    | "suspicious-username"
+    | "impersonation-username"
+    | "unsupported-claim"
+    | "low-quality-source-flood"
+    | "excessive-reports"
+    | "mass-following"
+    | "mass-liking"
+    | "unsafe-url";
+  severity: "low" | "medium" | "high";
+  message: string;
+  reviewRecommended?: boolean;
+}
+
 export interface ReportFlag {
   id: string;
   type: ReportType;
@@ -354,8 +404,15 @@ export type FeedLaneId =
   | "following"
   | "topics"
   | "debates"
+  | "trending-debates"
   | "evidence-needed"
   | "recently-contexted"
+  | "new-collections"
+  | "viral-claims"
+  | "breaking-topics"
+  | "latest-rebuttals"
+  | "source-disputes"
+  | "open-questions"
   | "trending-questions";
 
 export type EvidenceNeedKind =
@@ -396,8 +453,11 @@ export type NotificationKind =
   | "rebuttal-added"
   | "context-note-added"
   | "evidence-added"
+  | "collection-followed"
+  | "debate-update"
   | "followed-topic-update"
-  | "routine-result-ready";
+  | "routine-result-ready"
+  | "collaborator-invite";
 
 export interface ProofmediaNotification {
   id: string;
@@ -432,3 +492,158 @@ export type AnalyticsEventName =
   | "routine_created"
   | "save_clicked"
   | "share_clicked";
+
+// PASS 23 ecosystem architecture. These records are scaffolds for real
+// collaborative systems; starter rows must be labeled as prompts or templates.
+export type CreatorMode = "researcher" | "debater" | "investigator" | "educator" | "source-analyst";
+
+export interface CreatorStats {
+  collectionSaves: number;
+  evidenceCitations: number;
+  contextNotesAccepted: number;
+  helpfulContributions: number;
+  debateParticipation: number;
+  researchFollowers: number;
+}
+
+export interface CreatorShowcase {
+  mode: CreatorMode;
+  statusLine: string;
+  expertise: string[];
+  pinnedStatements: string[];
+  featuredCollectionIds: string[];
+  featuredDebateIds: string[];
+  featuredInvestigationIds: string[];
+  featuredEvidenceUrls: string[];
+  stats: CreatorStats;
+}
+
+export type SpaceCategory =
+  | "ai-tech"
+  | "politics"
+  | "justice"
+  | "health"
+  | "climate"
+  | "media"
+  | "finance"
+  | "world";
+
+export interface IntelligenceSpace {
+  id: string;
+  name: string;
+  category: SpaceCategory;
+  description: string;
+  starterPrompt: string;
+  pinnedResources: string[];
+  suggestedRoutines: string[];
+  moderationModel: "local-starter" | "community-moderated" | "staff-assisted";
+  defaultTags: string[];
+}
+
+export interface CollectionCollaborator {
+  username: string;
+  role: "owner" | "editor" | "contributor" | "viewer";
+  addedAt: string;
+}
+
+export interface CollectionSection {
+  id: string;
+  kind: "evidence" | "argument" | "timeline" | "context" | "missing-evidence";
+  title: string;
+  description: string;
+  itemIds: string[];
+}
+
+export interface CollaborativeCollectionMeta {
+  collectionId: string;
+  contributors: CollectionCollaborator[];
+  sections: CollectionSection[];
+  pinnedEvidenceIds: string[];
+  activityCount: number;
+  revisionCount: number;
+  sourceCoverageScore: number;
+  completionStatus: "seed" | "collecting" | "reviewing" | "publish-ready";
+}
+
+export interface InvestigationTimelineEvent {
+  id: string;
+  dateLabel: string;
+  title: string;
+  summary: string;
+  evidenceUrls: string[];
+}
+
+export interface InvestigationBoard {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  clusters: { id: string; label: string; evidenceUrls: string[] }[];
+  timeline: InvestigationTimelineEvent[];
+  unresolvedQuestions: string[];
+  conflictingEvidence: string[];
+  sourceMapDomains: string[];
+  owner: OwnerStamp;
+}
+
+export interface LiveDebateArchitecture {
+  debateId: string;
+  stageStatus: "planned" | "ready" | "manual-live" | "archived";
+  roundLengthMinutes: number;
+  evidenceQueueIds: string[];
+  audienceResponseEnabled: false;
+  websocketEnabled: false;
+}
+
+export interface SourceProfile {
+  domain: string;
+  displayName: string;
+  category: SourceCategory | null;
+  transparencyIndicators: string[];
+  citationBehavior: string[];
+  usageStats: {
+    citations: number;
+    collections: number;
+    debates: number;
+    investigations: number;
+  };
+  relationshipDomains: string[];
+}
+
+export interface DiscoverySuggestion {
+  id: string;
+  reason: "because-researched" | "opposing-viewpoint" | "source-alternative" | "under-discussed" | "may-disagree";
+  title: string;
+  body: string;
+  href: string;
+}
+
+export interface WorkspaceGroup {
+  id: string;
+  name: string;
+  purpose: "classroom" | "debate-club" | "journalism-team" | "creator-group" | "research-team";
+  memberRoles: Array<"owner" | "admin" | "editor" | "researcher" | "viewer">;
+  createdAt: string;
+}
+
+export interface TeamCollection {
+  id: string;
+  groupId: string;
+  collectionId: string;
+  permissions: "view" | "comment" | "edit";
+}
+
+export interface TeamRoutine {
+  id: string;
+  groupId: string;
+  routineId: string;
+  visibility: "private" | "group" | "public-template";
+}
+
+export interface DigestTemplate {
+  id: string;
+  name: string;
+  cadence: "daily" | "weekly" | "manual";
+  includes: Array<"new-evidence" | "debates" | "context-notes" | "routine-results" | "research-trends">;
+  delivery: "in-app-ready" | "email-future" | "export-only";
+}

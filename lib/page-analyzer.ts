@@ -1,4 +1,5 @@
 import { analyzeClickbait, type ClickbaitResult } from "./clickbait";
+import { validateSafeUrl } from "@/lib/security/sanitize";
 
 export interface PageAnalysis {
   fetched: boolean;
@@ -43,16 +44,15 @@ export async function analyzePage(rawUrl: string): Promise<PageAnalysis> {
   });
 
   let parsed: URL;
-  try { parsed = new URL(rawUrl); } catch { return empty("Invalid URL"); }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    return empty("Only http/https URLs supported");
-  }
+  const safe = validateSafeUrl(rawUrl);
+  if (!safe.ok || !safe.url) return empty(safe.message ?? "This link type is not allowed.");
+  try { parsed = new URL(safe.url); } catch { return empty("Invalid URL"); }
 
   let res: Response;
   try {
     res = await fetch(parsed.toString(), {
       method: "GET",
-      redirect: "follow",
+      redirect: "manual",
       headers: {
         "User-Agent": "ProofbaseBot/1.0 (educational source quality scanner; single-page only)",
         "Accept": "text/html,application/xhtml+xml",
@@ -62,6 +62,30 @@ export async function analyzePage(rawUrl: string): Promise<PageAnalysis> {
     });
   } catch (e) {
     return empty(`Could not reach page: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  if (res.status >= 300 && res.status < 400) {
+    const location = res.headers.get("location");
+    if (!location) return empty("Redirect missing destination.");
+    let next: URL;
+    try { next = new URL(location, parsed); } catch { return empty("Redirect destination is invalid."); }
+    const nextSafe = validateSafeUrl(next.toString());
+    if (!nextSafe.ok || !nextSafe.url) return empty(nextSafe.message ?? "This link type is not allowed.");
+    try {
+      res = await fetch(nextSafe.url, {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          "User-Agent": "ProofbaseBot/1.0 (educational source quality scanner; single-page only)",
+          "Accept": "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+    } catch (e) {
+      return empty(`Could not reach page: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    parsed = new URL(nextSafe.url);
   }
 
   const baseResult = empty("");

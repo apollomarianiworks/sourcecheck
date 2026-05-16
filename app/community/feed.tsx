@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-hook";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
-import { readFeed, type ClaimDoc } from "@/lib/community/firestore";
+import { readFeed, type ClaimDoc, type FeedPage } from "@/lib/community/firestore";
 import { ALLOWED_CATEGORIES, type ClaimCategoryId } from "@/lib/community/validation";
 import { evidenceNeedsForClaim, FEED_LANES, rankClaimsForLane } from "@/lib/proofmedia/engagement";
+import { buildDiscoverySnapshot } from "@/lib/proofmedia/discovery";
 import type { EvidenceNeedKind, FeedLaneId } from "@/lib/proofmedia/types";
 import Avatar from "@/components/proofmedia/Avatar";
+import DiscoveryPanel from "@/components/proofmedia/DiscoveryPanel";
+import FeedCommandSearch from "@/components/proofmedia/FeedCommandSearch";
 import NotificationBell from "@/components/proofmedia/NotificationBell";
 import ProgressPanel from "@/components/proofmedia/ProgressPanel";
 import ShareActions from "@/components/proofmedia/ShareActions";
@@ -31,6 +34,7 @@ const CATEGORY_LABEL: Record<ClaimCategoryId, string> = {
 };
 
 type Sort = "newest" | "top" | "active";
+type Density = "comfortable" | "compact";
 
 export default function CommunityFeed() {
   const { status, profile } = useAuth();
@@ -43,6 +47,10 @@ export default function CommunityFeed() {
   const [lane, setLane] = useState<FeedLaneId>("for-you");
   const [query, setQuery] = useState("");
   const [showComposer, setShowComposer] = useState(false);
+  const [cursor, setCursor] = useState<FeedPage["nextCursor"]>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [density, setDensity] = useState<Density>("comfortable");
+  const [newPostsAvailable, setNewPostsAvailable] = useState(false);
 
   const configured = isFirebaseConfigured();
 
@@ -56,12 +64,20 @@ export default function CommunityFeed() {
       pageSize: 30,
     }).then((page) => {
       setItems(page.items);
+      setCursor(page.nextCursor);
+      setNewPostsAvailable(false);
       setLoading(false);
     }).catch((e) => {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyFeedError(e));
       setLoading(false);
     });
   }, [configured, category, sort]);
+
+  useEffect(() => {
+    if (!configured || loading) return;
+    const id = window.setInterval(() => setNewPostsAvailable(items.length > 0), 90_000);
+    return () => window.clearInterval(id);
+  }, [configured, loading, items.length]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -73,6 +89,27 @@ export default function CommunityFeed() {
       c.tags.some((t) => t.toLowerCase().includes(q))
     );
   }, [items, lane, query]);
+  const discovery = useMemo(() => buildDiscoverySnapshot(items), [items]);
+
+  async function loadMore() {
+    if (!configured || loadingMore || !cursor) return;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const page = await readFeed({
+        category: category === "all" ? null : category,
+        sort,
+        pageSize: 30,
+        cursor,
+      });
+      setItems((current) => [...current, ...page.items.filter((item) => !current.some((existing) => existing.id === item.id))]);
+      setCursor(page.nextCursor);
+    } catch (e) {
+      setError(friendlyFeedError(e));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   function handlePostClick() {
     if (status === "signed-in") setShowComposer((v) => !v);
@@ -113,8 +150,18 @@ export default function CommunityFeed() {
           />
         )}
 
+        {newPostsAvailable && (
+          <button
+            type="button"
+            onClick={() => { setNewPostsAvailable(false); window.location.reload(); }}
+            className="w-full rounded border border-line bg-soft px-3 py-2 text-[12px] text-ink-muted hover:border-brand hover:text-brand"
+          >
+            Check for new real posts
+          </button>
+        )}
+
         {/* Filters */}
-        <div className="card p-2 space-y-2">
+        <div className="card p-2 space-y-2 sticky top-[88px] lg:top-14 z-20 bg-page">
           <div className="flex flex-wrap gap-1 border-b border-line-soft pb-2">
             {FEED_LANES.map((l) => (
               <button
@@ -137,13 +184,9 @@ export default function CommunityFeed() {
             ))}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search titles, body, tags…"
-              className="flex-1 px-2 py-1 border border-line rounded text-[13px]"
-            />
+            <div className="flex-1 min-w-[240px]">
+              <FeedCommandSearch value={query} onChange={setQuery} />
+            </div>
             <div className="flex gap-1">
               {(["newest", "top", "active"] as Sort[]).map((s) => (
                 <button
@@ -156,6 +199,18 @@ export default function CommunityFeed() {
                 </button>
               ))}
             </div>
+            <div className="flex gap-1">
+              {(["comfortable", "compact"] as Density[]).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDensity(d)}
+                  className={`text-[11.5px] px-2 py-1 rounded border ${density === d ? "border-ink text-ink bg-section" : "border-line text-ink-muted hover:bg-section"}`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -165,17 +220,32 @@ export default function CommunityFeed() {
         ) : loading ? (
           <FeedSkeleton />
         ) : error ? (
-          <div className="card p-4 text-[13px] text-verdict-red">Feed failed: {error}</div>
+          <div className="card p-4 space-y-2 text-[13px] text-verdict-red">
+            <div>Feed failed: {error}</div>
+            <button type="button" onClick={() => setSort("newest")} className="text-[12px] text-link hover:underline">
+              Fall back to newest feed
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
           <EmptyFeed status={status} onPost={handlePostClick} lane={lane} />
         ) : (
-          <ul className="space-y-2.5">
-            {filtered.map((c) => <li key={c.id}><FeedRow claim={c} /></li>)}
+          <ul className={density === "compact" ? "space-y-1.5" : "space-y-2.5"}>
+            {filtered.map((c) => <li key={c.id}><FeedRow claim={c} density={density} /></li>)}
           </ul>
+        )}
+        {configured && cursor && !loading && !error && (
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="w-full rounded border border-line bg-page px-3 py-2 text-[13px] text-ink-muted hover:border-brand hover:text-brand disabled:opacity-60"
+          >
+            {loadingMore ? "Loading..." : "Load more real posts"}
+          </button>
         )}
       </div>
 
-      <CommunityRightRail />
+      <CommunityRightRail discovery={discovery} />
     </div>
   );
 }
@@ -192,13 +262,21 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-function FeedRow({ claim: c }: { claim: ClaimDoc }) {
+function friendlyFeedError(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  if (/index|indexes|FAILED_PRECONDITION|requires an index|create it here/i.test(msg)) {
+    return "This filter needs a Firestore index. Proofbase is hiding the raw Firebase setup URL and can fall back to the newest feed.";
+  }
+  return msg;
+}
+
+function FeedRow({ claim: c, density }: { claim: ClaimDoc; density: Density }) {
   const ev = c.evidenceCount;
   const cc = c.commentCount;
   const verdict = c.sourceMeshSummary?.verdict;
   const needs = evidenceNeedsForClaim(c);
   return (
-    <article className="card p-3.5 hover:border-ink-deep transition-colors">
+    <article className={`card ${density === "compact" ? "p-2.5" : "p-3.5"} hover:border-ink-deep hover:shadow-sm transition-colors group`}>
       <div className="flex items-center gap-2 text-[11.5px] text-ink-muted mb-1.5">
         <Avatar name={c.authorDisplayName} src={c.authorPhotoURL} size={20} />
         <Link href={`/profile/${c.authorUsername}`} className="hover:underline text-ink-body">{c.authorDisplayName}</Link>
@@ -210,6 +288,9 @@ function FeedRow({ claim: c }: { claim: ClaimDoc }) {
         {c.title}
       </Link>
       {c.body && <p className="text-[13px] text-ink-body leading-relaxed mt-1 line-clamp-2">{c.body}</p>}
+      <div className="hidden group-hover:block mt-2 rounded border border-line-soft bg-soft p-2 text-[12px] text-ink-muted">
+        Preview: {c.sourceMeshSummary ? `${c.sourceMeshSummary.evidenceCount} SourceMesh evidence items with ${c.sourceMeshSummary.coverageLevel} coverage.` : "No SourceMesh summary yet. Open the post to add context or run research."}
+      </div>
       <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px]">
         {verdict && <VerdictPill verdict={verdict} />}
         {needs.slice(0, 2).map((need) => <EvidenceNeedPill key={need} need={need} />)}
@@ -300,9 +381,10 @@ function NotConfigured({ lane }: { lane: FeedLaneId }) {
   );
 }
 
-function CommunityRightRail() {
+function CommunityRightRail({ discovery }: { discovery: ReturnType<typeof buildDiscoverySnapshot> }) {
   return (
     <aside className="space-y-3 lg:sticky lg:top-16 self-start">
+      <DiscoveryPanel snapshot={discovery} />
       <TodayPanel />
       <ProgressPanel />
       <NotificationBell />

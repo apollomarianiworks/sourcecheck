@@ -23,6 +23,7 @@ import { buildResearchSummary } from "@/lib/research-summary";
 import { analyzeClaimQuality, type ClaimQualityResult, type SafetyWarning } from "@/lib/claim-quality";
 import { computeConfidence, buildSuggestions, deriveSafetyWarnings } from "@/lib/confidence";
 import { rateLimit, ipFromRequest, pruneBuckets } from "@/lib/rate-limit";
+import { guardApiAction, SecurityError } from "@/lib/security/guard";
 import type { FactCheckResult } from "@/lib/factcheck";
 import { multiSearch, detectCategory } from "@/lib/sources";
 import { toEvidenceItem } from "@/lib/sources/types";
@@ -42,6 +43,14 @@ export const runtime = "nodejs";
 type ApiStatus = CheckResult["apiStatus"];
 
 export async function POST(req: NextRequest) {
+  try {
+    guardApiAction(req, "sourceMeshScan");
+  } catch (error) {
+    if (error instanceof SecurityError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: "Something went wrong. Try again shortly." }, { status: 500 });
+  }
   // ── Per-IP rate limiting (in-memory, 30 req/min) ──
   pruneBuckets();
   const ip = ipFromRequest(req);

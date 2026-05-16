@@ -4,8 +4,10 @@ import {
   doc, getDoc, setDoc, updateDoc, serverTimestamp, type Firestore,
 } from "firebase/firestore";
 import type { User } from "firebase/auth";
-import { getFirebaseDb } from "./client";
+import { getFirebaseAuth, getFirebaseDb } from "./client";
 import { slugify } from "@/lib/proofmedia/slug";
+import { assertNoProtectedUserFields, guardClientAction } from "@/lib/security/guard";
+import { validateBio, validateDisplayName, validateProfileUrl, validateUsername } from "@/lib/security/validators";
 
 /** Public-readable user profile document at `users/{uid}`. */
 export interface UserProfile {
@@ -20,6 +22,12 @@ export interface UserProfile {
   updatedAt: string;             // ISO
   reputationScore: number;       // simple running sum; never used to gate access yet
   role: "user" | "moderator" | "admin";
+  followerCount: number;
+  followingCount: number;
+  postCount: number;
+  likeCount: number;
+  status: "active" | "banned" | "deleted";
+  moderationStatus: "clear" | "needs-review" | "restricted";
   restrictions: string[];        // e.g. "no-post", "no-comment" — server enforces via rules
 }
 
@@ -58,6 +66,12 @@ export async function readProfile(uid: string): Promise<UserProfile | null> {
       reputationScore: typeof data.reputationScore === "number" ? data.reputationScore : 0,
       role:            (data.role as UserProfile["role"]) ?? "user",
       restrictions:    Array.isArray(data.restrictions) ? data.restrictions.filter((r): r is string => typeof r === "string") : [],
+      followerCount:   typeof data.followerCount === "number" ? data.followerCount : 0,
+      followingCount:  typeof data.followingCount === "number" ? data.followingCount : 0,
+      postCount:       typeof data.postCount === "number" ? data.postCount : 0,
+      likeCount:       typeof data.likeCount === "number" ? data.likeCount : 0,
+      status:          (data.status as UserProfile["status"]) ?? "active",
+      moderationStatus:(data.moderationStatus as UserProfile["moderationStatus"]) ?? "clear",
     };
   } catch {
     return null;
@@ -82,13 +96,19 @@ export async function ensureProfile(u: User): Promise<UserProfile | null> {
     displayName:     u.displayName?.trim() || u.email?.split("@")[0] || "Anonymous",
     photoURL:        u.photoURL ?? null,
     bio:             "",
-    email:           u.email ?? null,
+    email:           null,
     emailVerified:   Boolean(u.emailVerified),
     createdAt:       new Date().toISOString(),
     updatedAt:       new Date().toISOString(),
     reputationScore: 0,
     role:            "user",
     restrictions:    [],
+    followerCount:   0,
+    followingCount:  0,
+    postCount:       0,
+    likeCount:       0,
+    status:          "active",
+    moderationStatus:"clear",
   };
   try {
     await setDoc(doc(db, "users", u.uid), {
@@ -107,11 +127,32 @@ export async function updateProfile(
 ): Promise<UserProfile | null> {
   const db = getFirebaseDb();
   if (!db) return null;
+  const user = getFirebaseAuth()?.currentUser;
+  const existing = await readProfile(uid);
+  guardClientAction({ user, action: "profileUpdate", restrictions: existing?.restrictions ?? [] });
+  if (user?.uid !== uid) throw new Error("You cannot edit this content.");
+  assertNoProtectedUserFields(patch as Record<string, unknown>);
   const update: Record<string, unknown> = { updatedAt: serverTimestamp() };
-  if (patch.displayName !== undefined) update.displayName = patch.displayName.trim().slice(0, 60);
-  if (patch.bio         !== undefined) update.bio         = patch.bio.trim().slice(0, 400);
-  if (patch.photoURL    !== undefined) update.photoURL    = patch.photoURL || null;
-  if (patch.username    !== undefined) update.username    = slugify(patch.username, "user").slice(0, 40);
+  if (patch.displayName !== undefined) {
+    const v = validateDisplayName(patch.displayName);
+    if (!v.ok || !v.value) throw new Error(v.message ?? "Invalid display name.");
+    update.displayName = v.value;
+  }
+  if (patch.bio !== undefined) {
+    const v = validateBio(patch.bio);
+    if (!v.ok) throw new Error(v.message ?? "Invalid bio.");
+    update.bio = v.value ?? "";
+  }
+  if (patch.photoURL !== undefined) {
+    const v = validateProfileUrl(patch.photoURL ?? "");
+    if (!v.ok) throw new Error(v.message ?? "Invalid profile link.");
+    update.photoURL = v.value;
+  }
+  if (patch.username !== undefined) {
+    const v = validateUsername(patch.username);
+    if (!v.ok || !v.value) throw new Error(v.message ?? "Invalid username.");
+    update.username = v.value;
+  }
   await updateDoc(doc(db, "users", uid), update);
   return readProfile(uid);
 }

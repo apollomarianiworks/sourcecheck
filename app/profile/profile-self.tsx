@@ -6,8 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/firebase/auth-hook";
 import { updateProfile } from "@/lib/firebase/user-profile";
 import { readClaimsByAuthor, readUserSaves, readClaim, type ClaimDoc, type SaveDoc } from "@/lib/community/firestore";
+import { buildReputationSnapshot } from "@/lib/proofmedia/reputation";
+import { CollectionStore } from "@/lib/proofmedia/store";
 import Avatar from "@/components/proofmedia/Avatar";
 import ProgressPanel from "@/components/proofmedia/ProgressPanel";
+import ReputationPanel from "@/components/proofmedia/ReputationPanel";
+import CreatorShowcase from "@/components/proofmedia/CreatorShowcase";
 
 type Tab = "overview" | "claims" | "saved" | "settings";
 
@@ -36,12 +40,21 @@ export default function ProfileSelfRoute() {
     <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6 lg:gap-8">
       <aside className="space-y-3 lg:sticky lg:top-16 self-start">
         <div className="card p-4 space-y-2">
+          <div className="h-20 rounded bg-[linear-gradient(135deg,#f7f7f7,#fdecec)] border border-line-soft" aria-hidden="true" />
           <Avatar name={profile.displayName} src={profile.photoURL} size={56} />
           <div>
             <div className="text-[16px] font-bold text-ink">{profile.displayName}</div>
             <div className="text-[12px] text-ink-muted">@{profile.username}</div>
           </div>
           {profile.bio && <p className="text-[13px] text-ink-body leading-relaxed">{profile.bio}</p>}
+          <div className="flex flex-wrap gap-1.5">
+            {["source quality", "context", "debate prep"].map((tag) => (
+              <span key={tag} className="rounded-full border border-line bg-soft px-2 py-1 text-[11px] text-ink-muted">{tag}</span>
+            ))}
+          </div>
+          <div className="rounded border border-line-soft bg-soft px-2 py-1.5 text-[11px] text-ink-muted">
+            Verification placeholder: identity and expertise checks are planned, not simulated.
+          </div>
           <Link
             href={`/profile/${profile.username}`}
             className="block text-[12px] text-link hover:underline"
@@ -59,6 +72,7 @@ export default function ProfileSelfRoute() {
 
       <div className="space-y-4 min-w-0">
         {tab === "overview" && <ProgressPanel />}
+        {tab === "overview" && <CreatorShowcase />}
         {tab === "overview" && <OverviewPanel uid={user.uid} />}
         {tab === "claims"   && <MyClaimsPanel uid={user.uid} />}
         {tab === "saved"    && <SavedPanel uid={user.uid} />}
@@ -87,12 +101,31 @@ function OverviewPanel({ uid }: { uid: string }) {
     Promise.all([readClaimsByAuthor(uid).catch(() => []), readUserSaves(uid).catch(() => [])])
       .then(([c, s]) => { setClaims(c); setSaves(s); });
   }, [uid]);
+  const reputation = buildReputationSnapshot({ claims, saves, collectionsCreated: CollectionStore.list().length });
   return (
     <div className="space-y-4">
+      <ReputationPanel snapshot={reputation} />
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Stat label="Claims posted" value={claims.length} />
         <Stat label="Saved items"   value={saves.length} />
         <Stat label="Evidence shared" value={claims.reduce((s, c) => s + c.evidenceCount, 0)} />
+        <Stat label="Sources cited" value={reputation.metrics.sourcesCited} />
+        <Stat label="Helpful rating" value={reputation.helpfulRating} />
+        <Stat label="Profile views" value={reputation.metrics.profileViewsPlaceholder} />
+      </div>
+      <div className="card p-3.5 space-y-2">
+        <h3 className="text-[14px] font-bold text-ink">Contribution timeline</h3>
+        {claims.length === 0 ? (
+          <p className="text-[13px] text-ink-muted">Your evidence timeline appears after real posts, saves, context notes, or rebuttals.</p>
+        ) : (
+          <ul className="space-y-1.5 text-[12.5px]">
+            {claims.slice(0, 5).map((claim) => (
+              <li key={claim.id} className="rounded border border-line-soft bg-soft px-2 py-1">
+                {claim.createdAt.slice(0, 10)}: posted {claim.evidenceCount} evidence link{claim.evidenceCount === 1 ? "" : "s"} on <Link href={`/community/${claim.id}`} className="text-link hover:underline">{claim.title}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <div className="card p-3.5 space-y-2">
         <h3 className="text-[14px] font-bold text-ink">Recent claims</h3>

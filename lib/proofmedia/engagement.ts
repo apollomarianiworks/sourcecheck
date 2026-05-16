@@ -9,6 +9,8 @@ import type {
   SocialActionKind,
   StarterPrompt,
 } from "./types";
+import { checkClientRateLimit, type GuardAction } from "@/lib/security/rate-limits";
+import { sanitizeTag } from "@/lib/security/sanitize";
 export { STARTER_PROMPTS, STARTER_TOPICS } from "./starter";
 import { STARTER_PROMPTS } from "./starter";
 
@@ -20,8 +22,15 @@ export const FEED_LANES: { id: FeedLaneId; label: string; description: string }[
   { id: "following", label: "Following", description: "Claims matching topics you follow locally." },
   { id: "topics", label: "Topics", description: "Source-rich posts grouped around topic tags." },
   { id: "debates", label: "Debates", description: "Debate prompts and claims with active rebuttal potential." },
+  { id: "trending-debates", label: "Trending Debates", description: "Debate-shaped posts ranked by real evidence, comments, and saves." },
   { id: "evidence-needed", label: "Evidence Needed", description: "Claims that need sources, primary documents, or opposing evidence." },
   { id: "recently-contexted", label: "Context Added", description: "Posts with SourceMesh context or recent discussion." },
+  { id: "new-collections", label: "New Collections", description: "Collection-worthy research threads and saved-source prompts." },
+  { id: "viral-claims", label: "Viral Claims", description: "Claims tagged as viral or social, using real posts only." },
+  { id: "breaking-topics", label: "Breaking Topics", description: "Recently updated posts and fast-moving topics." },
+  { id: "latest-rebuttals", label: "Latest Rebuttals", description: "Active claims with rebuttal/comment activity." },
+  { id: "source-disputes", label: "Source Disputes", description: "Claims with source warnings, low evidence, or dispute signals." },
+  { id: "open-questions", label: "Open Questions", description: "Question-shaped posts and unresolved investigations." },
   { id: "trending-questions", label: "Questions", description: "Question-shaped posts. Not a fake trending chart." },
 ];
 
@@ -51,6 +60,7 @@ function writeActions(actions: ProofmediaAction[]) {
 export const ActionStore = {
   list: readActions,
   record(kind: SocialActionKind, targetType: ProofmediaAction["targetType"], targetId: string, metadata?: ProofmediaAction["metadata"]) {
+    guardLocalAction(kind);
     const action: ProofmediaAction = {
       id: `act_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
       kind,
@@ -78,7 +88,24 @@ export function hasSeenOnboarding() {
 }
 
 export function getFollowedTopics(): string[] {
-  return FollowStore.list().map((f) => f.tag.toLowerCase());
+  return FollowStore.list().map((f) => sanitizeTag(f.tag));
+}
+
+function guardLocalAction(kind: SocialActionKind): void {
+  const action = actionRateKind(kind);
+  if (!action) return;
+  const rate = checkClientRateLimit("local-proofmedia-user", action);
+  if (!rate.allowed) throw new Error("This action is temporarily limited.");
+}
+
+function actionRateKind(kind: SocialActionKind): GuardAction | null {
+  if (kind === "comment" || kind === "rebut" || kind === "add-context") return "comment";
+  if (kind === "like" || kind === "helpful") return "like";
+  if (kind === "save") return "save";
+  if (kind === "follow-topic" || kind === "follow-user") return "follow";
+  if (kind === "report") return "report";
+  if (kind === "add-evidence") return "post";
+  return null;
 }
 
 export function rankClaimsForLane(items: ClaimDoc[], lane: FeedLaneId, followedTopics = getFollowedTopics()): ClaimDoc[] {
@@ -89,8 +116,15 @@ export function rankClaimsForLane(items: ClaimDoc[], lane: FeedLaneId, followedT
     if (lane === "following") return inFollowed(c);
     if (lane === "topics") return c.tags.length > 0;
     if (lane === "debates") return c.title.includes("?") || c.tags.some((t) => /debate|policy|argument|pro-con/.test(t));
+    if (lane === "trending-debates") return isDebateLike(c) && realActivity(c) > 0;
     if (lane === "evidence-needed") return evidenceNeedsForClaim(c).length > 0;
     if (lane === "recently-contexted") return Boolean(c.sourceMeshSummary) || c.commentCount > 0;
+    if (lane === "new-collections") return c.evidenceCount >= 2 || c.tags.some((t) => /collection|packet|research|sources/.test(t));
+    if (lane === "viral-claims") return /viral|tiktok|youtube|instagram|reddit|x|twitter|celebrity|rumor/.test(`${c.title} ${c.body} ${c.tags.join(" ")}`.toLowerCase());
+    if (lane === "breaking-topics") return daysSince(c.updatedAt || c.createdAt) <= 7;
+    if (lane === "latest-rebuttals") return c.commentCount > 0;
+    if (lane === "source-disputes") return evidenceNeedsForClaim(c).includes("needs-opposing-evidence") || c.sourceMeshSummary?.verdict === "mixed" || c.sourceMeshSummary?.verdict === "disputes";
+    if (lane === "open-questions") return c.title.includes("?") || c.body.includes("?") || c.sourceMeshSummary?.confidenceLevel === "insufficient";
     if (lane === "trending-questions") return c.title.includes("?") || c.body.includes("?");
     return true;
   });
@@ -108,9 +142,30 @@ function scoreClaimForLane(c: ClaimDoc, lane: FeedLaneId, followed: Set<string>)
   if (c.tags.some((t) => followed.has(t.toLowerCase())) || followed.has(c.category)) score += 22;
   if (evidenceNeedsForClaim(c).length > 0) score += lane === "evidence-needed" ? 30 : 5;
   if (lane === "recently-contexted") score += c.commentCount * 4 + (c.sourceMeshSummary ? 10 : 0);
+  if (lane === "trending-debates") score += realActivity(c) * 6 + c.evidenceCount * 4;
+  if (lane === "new-collections") score += c.evidenceCount * 10 + c.tags.length * 2;
+  if (lane === "viral-claims") score += c.evidenceCount * 8 + (c.sourceMeshSummary ? 12 : 0);
+  if (lane === "breaking-topics") score += Math.max(0, 20 - daysSince(c.updatedAt || c.createdAt));
+  if (lane === "latest-rebuttals") score += c.commentCount * 8;
+  if (lane === "source-disputes") score += evidenceNeedsForClaim(c).length * 8;
+  if (lane === "open-questions") score += c.sourceMeshSummary?.confidenceLevel === "insufficient" ? 16 : 8;
   if (lane === "trending-questions" && (c.title.includes("?") || c.body.includes("?"))) score += 20;
   score += Date.parse(c.updatedAt || c.createdAt) / 100000000000;
   return score;
+}
+
+function realActivity(c: ClaimDoc): number {
+  return c.commentCount + c.evidenceCount + Math.max(0, c.score);
+}
+
+function isDebateLike(c: ClaimDoc): boolean {
+  return c.title.includes("?") || /debate|policy|argument|pro-con|rebuttal|should|versus|vs\.?/i.test(`${c.title} ${c.body} ${c.tags.join(" ")}`);
+}
+
+function daysSince(iso: string): number {
+  const parsed = Date.parse(iso);
+  if (Number.isNaN(parsed)) return 999;
+  return Math.floor((Date.now() - parsed) / 86400000);
 }
 
 export function evidenceNeedsForClaim(c: ClaimDoc): EvidenceNeedKind[] {

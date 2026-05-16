@@ -21,11 +21,15 @@ import {
   type DocumentSnapshot, type QueryDocumentSnapshot, type DocumentData,
 } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseAuth } from "@/lib/firebase/client";
+import { readProfile } from "@/lib/firebase/user-profile";
+import { guardClientAction } from "@/lib/security/guard";
+import { sanitizeTag, sanitizeUserText } from "@/lib/security/sanitize";
+import { validateCommentInput, validateEvidenceUrlsInput, validatePostInput } from "@/lib/security/validators";
 import type {
   ClaimCategoryId, CommentType, ClaimVisibility,
 } from "./validation";
 import { validateClaim, validateComment, validateReport } from "./validation";
-import { checkRestriction, recordAction } from "./restrictions";
+import { recordAction } from "./restrictions";
 import { slugify } from "@/lib/proofmedia/slug";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -147,6 +151,11 @@ function requireUser() {
   return user;
 }
 
+async function restrictionsFor(uid: string): Promise<string[]> {
+  const profile = await readProfile(uid);
+  return profile?.restrictions ?? [];
+}
+
 function toIso(v: unknown): string {
   if (typeof v === "string") return v;
   if (v instanceof Timestamp) return v.toDate().toISOString();
@@ -174,23 +183,30 @@ interface CreateClaimOpts {
 
 export async function createClaim(input: ComposeClaimInput, opts: CreateClaimOpts): Promise<string> {
   const user = requireUser();
-  const r = checkRestriction("create-claim");
-  if (!r.allowed) throw new ClientError(r.reason ?? "Rate limited.");
+  const restrictions = await restrictionsFor(user.uid);
+  guardClientAction({
+    user,
+    action: "post",
+    requireVerifiedEmail: input.visibility === "public",
+    restrictions,
+  });
   const v = validateClaim(input);
   if (!v.ok) throw new ClientError(v.message ?? "Invalid claim.", v.field);
+  const guarded = validatePostInput(input);
+  if (!guarded.ok || !guarded.value) throw new ClientError(guarded.message ?? "Invalid claim.", guarded.field);
 
-  const id = claimSlug(input.title, user.uid);
+  const id = claimSlug(guarded.value.title, user.uid);
   const docRef = doc(db(), "claims", id);
   const payload = {
     authorId:          user.uid,
-    authorUsername:    opts.authorUsername,
-    authorDisplayName: opts.authorDisplayName,
+    authorUsername:    sanitizeUserText(opts.authorUsername, 24),
+    authorDisplayName: sanitizeUserText(opts.authorDisplayName, 50),
     authorPhotoURL:    opts.authorPhotoURL,
-    title:             input.title.trim(),
-    body:              (input.body ?? "").trim(),
+    title:             guarded.value.title,
+    body:              guarded.value.body,
     category:          input.category,
-    tags:              input.tags.map((t) => t.toLowerCase()),
-    evidenceUrls:      input.evidenceUrls,
+    tags:              guarded.value.tags.map(sanitizeTag),
+    evidenceUrls:      guarded.value.evidenceUrls,
     sourceMeshSummary: null,
     visibility:        input.visibility,
     createdAt:         serverTimestamp(),
@@ -198,7 +214,8 @@ export async function createClaim(input: ComposeClaimInput, opts: CreateClaimOpt
     score:             0,
     commentCount:      0,
     evidenceCount:     input.evidenceUrls.length,
-    status:            "active",
+    status:            guarded.value.needsReview ? "flagged" : "active",
+    moderationStatus:  guarded.value.needsReview ? "needs-review" : "clear",
   };
   await setDoc(docRef, payload);
   recordAction("create-claim");
@@ -206,6 +223,7 @@ export async function createClaim(input: ComposeClaimInput, opts: CreateClaimOpt
 }
 
 export async function attachSourceMeshSummary(claimId: string, summary: SourceMeshSnapshot): Promise<void> {
+  requireUser();
   await updateDoc(doc(db(), "claims", claimId), {
     sourceMeshSummary: summary,
     updatedAt: serverTimestamp(),
@@ -313,20 +331,22 @@ interface CreateCommentOpts {
 
 export async function createComment(input: ComposeCommentInput, opts: CreateCommentOpts): Promise<string> {
   const user = requireUser();
-  const r = checkRestriction("create-comment");
-  if (!r.allowed) throw new ClientError(r.reason ?? "Rate limited.");
+  const restrictions = await restrictionsFor(user.uid);
+  guardClientAction({ user, action: "comment", requireVerifiedEmail: true, restrictions });
   const v = validateComment(input);
   if (!v.ok) throw new ClientError(v.message ?? "Invalid comment.", v.field);
+  const guarded = validateCommentInput(input);
+  if (!guarded.ok || !guarded.value) throw new ClientError(guarded.message ?? "Invalid comment.", guarded.field);
 
   const ref = await addDoc(collection(db(), "comments"), {
     claimId:           input.claimId,
     authorId:          user.uid,
-    authorUsername:    opts.authorUsername,
-    authorDisplayName: opts.authorDisplayName,
+    authorUsername:    sanitizeUserText(opts.authorUsername, 24),
+    authorDisplayName: sanitizeUserText(opts.authorDisplayName, 50),
     authorPhotoURL:    opts.authorPhotoURL,
-    body:              input.body.trim(),
+    body:              guarded.value.body,
     type:              input.type,
-    evidenceUrls:      input.evidenceUrls,
+    evidenceUrls:      guarded.value.evidenceUrls,
     createdAt:         serverTimestamp(),
     updatedAt:         serverTimestamp(),
     score:             0,
@@ -384,8 +404,8 @@ export async function isSaved(targetType: SaveDoc["targetType"], targetId: strin
 
 export async function toggleSave(targetType: SaveDoc["targetType"], targetId: string): Promise<boolean> {
   const user = requireUser();
-  const r = checkRestriction("save");
-  if (!r.allowed) throw new ClientError(r.reason ?? "Rate limited.");
+  const restrictions = await restrictionsFor(user.uid);
+  guardClientAction({ user, action: "save", restrictions });
   const id = saveId(user.uid, targetType, targetId);
   const ref = doc(db(), "saves", id);
   const snap = await getDoc(ref);
@@ -453,8 +473,8 @@ export async function castVote(
   voteType: "up" | "down",
 ): Promise<"up" | "down" | null> {
   const user = requireUser();
-  const r = checkRestriction("vote");
-  if (!r.allowed) throw new ClientError(r.reason ?? "Rate limited.");
+  const restrictions = await restrictionsFor(user.uid);
+  guardClientAction({ user, action: "like", restrictions });
   const id = voteId(user.uid, targetType, targetId);
   const ref = doc(db(), "votes", id);
   const snap = await getDoc(ref);
@@ -486,16 +506,20 @@ export async function createReport(input: {
   details: string;
 }): Promise<string> {
   const user = requireUser();
-  const r = checkRestriction("report");
-  if (!r.allowed) throw new ClientError(r.reason ?? "Rate limited.");
+  const restrictions = await restrictionsFor(user.uid);
+  guardClientAction({ user, action: "report", restrictions });
   const v = validateReport(input.reason, input.details);
   if (!v.ok) throw new ClientError(v.message ?? "Invalid report.", v.field);
+  if (input.targetType === "user") {
+    const target = await getDoc(doc(db(), "users", input.targetId));
+    if (!target.exists()) throw new ClientError("That user could not be reported.");
+  }
   const ref = await addDoc(collection(db(), "reports"), {
     reporterId: user.uid,
     targetType: input.targetType,
     targetId:   input.targetId,
-    reason:     input.reason,
-    details:    input.details.trim(),
+    reason:     sanitizeUserText(input.reason, 80),
+    details:    sanitizeUserText(input.details, 1000),
     createdAt:  serverTimestamp(),
     status:     "open",
   });

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import TopNav from "@/components/TopNav";
 import PwaRegister from "@/components/pwa/PwaRegister";
+import MobileBottomNav from "@/components/MobileBottomNav";
+import CommandPalette from "@/components/workspace/CommandPalette";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -69,7 +71,9 @@ export default function RootLayout({
         <a href="#main" className="skip-link">Skip to main content</a>
         <PwaRegister />
         <TopNav />
+        <CommandPalette />
         <div id="main">{children}</div>
+        <MobileBottomNav />
       </body>
     </html>
   );

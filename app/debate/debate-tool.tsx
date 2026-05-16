@@ -65,6 +65,8 @@ export default function DebateTool() {
             <div className="text-[16px] font-bold text-ink">{brief.uncertainty}</div>
           </div>
 
+          <DebateWorkspace brief={brief} topic={topic} />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Side title="Pro evidence packet" side={brief.pro} />
             <Side title="Con evidence packet" side={brief.con} />
@@ -79,6 +81,60 @@ export default function DebateTool() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DebateWorkspace({ brief, topic }: { brief: DebateBrief; topic: string }) {
+  const proCount = brief.pro.evidence.length;
+  const conCount = brief.con.evidence.length;
+  const disputed = [...brief.pro.evidence, ...brief.con.evidence].filter((item) => item.evidenceType === "unclear" || item.relevance !== "high");
+  return (
+    <section className="card p-4 space-y-4">
+      <div>
+        <div className="text-[11px] uppercase tracking-wide text-ink-muted">Debate workspace</div>
+        <h2 className="text-[20px] font-bold text-ink">Evidence board for {topic}</h2>
+        <p className="text-[13px] text-ink-muted">Structured for serious debate: argument tree, pro/con boards, rebuttal map, evidence gaps, timeline support, and export-ready source packets.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        <Metric label="Pro sources" value={proCount} />
+        <Metric label="Con sources" value={conCount} />
+        <Metric label="Disputed evidence" value={disputed.length} />
+        <Metric label="Gaps" value={brief.missingEvidence.length} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Board title="Argument tree" items={[
+          `Resolution: ${topic}`,
+          proCount > 0 ? "Pro branch has sourced support." : "Pro branch needs stronger evidence.",
+          conCount > 0 ? "Con branch has sourced support." : "Con branch needs stronger evidence.",
+        ]} />
+        <Board title="Strongest counterarguments" items={brief.crossExaminationQuestions.slice(0, 4)} />
+        <Board title="Most disputed evidence" items={disputed.slice(0, 4).map((item) => item.title)} />
+      </div>
+    </section>
+  );
+}
+
+function Board({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded border border-line-soft bg-soft p-3">
+      <div className="text-[13px] font-bold text-ink mb-2">{title}</div>
+      {items.length ? (
+        <ul className="space-y-1 text-[12px] text-ink-muted list-disc pl-4">
+          {items.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      ) : (
+        <div className="text-[12px] text-ink-muted">No real evidence returned for this board.</div>
+      )}
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded border border-line-soft bg-soft p-3">
+      <div className="text-[20px] font-bold text-ink">{value}</div>
+      <div className="text-[11px] text-ink-muted">{label}</div>
     </div>
   );
 }
