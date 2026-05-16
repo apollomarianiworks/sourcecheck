@@ -1,139 +1,117 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getLocalAccount, subscribeLocalAccount, type LocalAccount } from "@/lib/auth/local";
-import { ClaimStore, CollectionStore, DebateStore, ProfileStore } from "@/lib/proofmedia/store";
-import type { ResearchProfile, ResearchBadge, ClaimThread, Collection, DebateRoom } from "@/lib/proofmedia/types";
-import ClaimPostCard from "@/components/proofmedia/ClaimPostCard";
-import CollectionPreviewCard from "@/components/proofmedia/CollectionPreviewCard";
-import DebateRoomCard from "@/components/proofmedia/DebateRoomCard";
-import ResearchProfileCard from "@/components/proofmedia/ResearchProfileCard";
-import EmptyState from "@/components/proofmedia/EmptyState";
-import LocalModeBanner from "@/components/proofmedia/LocalModeBanner";
+import Link from "next/link";
+import {
+  collection, query, where, getDocs, limit,
+} from "firebase/firestore";
+import { getFirebaseDb, isFirebaseConfigured } from "@/lib/firebase/client";
+import { readClaimsByAuthor, type ClaimDoc } from "@/lib/community/firestore";
+import { readProfile, type UserProfile } from "@/lib/firebase/user-profile";
+import Avatar from "@/components/proofmedia/Avatar";
 
 interface Props { username: string; }
 
 export default function ProfileView({ username }: Props) {
-  const [account, setAccount] = useState<LocalAccount | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [claims, setClaims]   = useState<ClaimDoc[]>([]);
+  const [status, setStatus]   = useState<"loading" | "ready" | "not-found" | "not-configured">("loading");
 
   useEffect(() => {
-    setAccount(getLocalAccount());
-    setMounted(true);
-    return subscribeLocalAccount(setAccount);
-  }, []);
+    if (!isFirebaseConfigured()) { setStatus("not-configured"); return; }
+    const db = getFirebaseDb();
+    if (!db) { setStatus("not-configured"); return; }
+    (async () => {
+      try {
+        // Look up user by username
+        const q = query(collection(db, "users"), where("username", "==", username), limit(1));
+        const snap = await getDocs(q);
+        if (snap.empty) { setStatus("not-found"); return; }
+        const uid = snap.docs[0].id;
+        const [p, c] = await Promise.all([
+          readProfile(uid),
+          readClaimsByAuthor(uid).catch(() => [] as ClaimDoc[]),
+        ]);
+        if (!p) { setStatus("not-found"); return; }
+        setProfile(p);
+        setClaims(c);
+        setStatus("ready");
+      } catch {
+        setStatus("not-found");
+      }
+    })();
+  }, [username]);
 
-  if (!mounted) return <div className="text-ink-dim text-[13px]">Loading…</div>;
+  if (status === "loading")
+    return <div className="card p-6 text-[13px] text-ink-muted">Loading profile…</div>;
 
-  const isLocalUser = account?.username === username;
-  if (!isLocalUser) {
+  if (status === "not-configured")
     return (
-      <div className="space-y-4 max-w-result mx-auto">
-        <LocalModeBanner />
-        <EmptyState
-          icon="@"
-          title={`@${username} — profile not available`}
-          body="ProofMedia is local-first in PASS 16. The only profile that exists on this device is yours. Other usernames cannot be looked up — there's no server yet."
-          cta={account ? { href: `/profile/${account.username}`, label: "Go to your profile →" } : { href: "/community", label: "Back to community →" }}
-        />
+      <div className="card p-6 space-y-2">
+        <h2 className="text-[16px] font-bold text-ink">Profiles unavailable</h2>
+        <p className="text-[13px] text-ink-muted">Firebase isn&apos;t configured. Public profiles can&apos;t be loaded.</p>
       </div>
     );
-  }
 
-  return <SelfProfile account={account} />;
-}
+  if (status === "not-found")
+    return (
+      <div className="card p-6 space-y-3 text-center">
+        <h2 className="text-[16px] font-bold text-ink">@{username} not found</h2>
+        <p className="text-[13px] text-ink-muted">No public profile with that username on this Proofbase instance.</p>
+        <Link href="/community" className="inline-block bg-brand hover:bg-brand-hover text-white px-3 py-1.5 rounded text-[13px] no-underline">Browse community →</Link>
+      </div>
+    );
 
-function SelfProfile({ account }: { account: LocalAccount }) {
-  const claims = ClaimStore.list().filter((c) => c.owner.authorUsername === account.username);
-  const collections = CollectionStore.list().filter((c) => c.owner.authorUsername === account.username);
-  const debates = DebateStore.list().filter((d) => d.owner.authorUsername === account.username);
-
-  const profile = computeProfile(account, claims, collections, debates);
-  // Persist computed profile so other surfaces can read it
-  ProfileStore.set(profile);
-
+  if (!profile) return null;
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] gap-6 lg:gap-8">
       <div className="space-y-3 lg:sticky lg:top-16 self-start">
-        <ResearchProfileCard profile={profile} />
+        <div className="card p-4 space-y-2">
+          <Avatar name={profile.displayName} src={profile.photoURL} size={64} />
+          <div>
+            <h1 className="text-[18px] font-bold text-ink">{profile.displayName}</h1>
+            <div className="text-[12px] text-ink-muted">@{profile.username}</div>
+            <div className="text-[11px] text-ink-dim">joined {profile.createdAt.slice(0, 10)}</div>
+          </div>
+          {profile.bio && <p className="text-[13px] text-ink-body leading-relaxed">{profile.bio}</p>}
+          <div className="grid grid-cols-2 gap-2 text-[12px] border-t border-line-soft pt-2">
+            <div><strong className="text-ink">{claims.length}</strong> <span className="text-ink-muted">claims</span></div>
+            <div><strong className="text-ink">{claims.reduce((s, c) => s + c.evidenceCount, 0)}</strong> <span className="text-ink-muted">evidence</span></div>
+            <div><strong className="text-ink">{profile.reputationScore}</strong> <span className="text-ink-muted">rep</span></div>
+            <div><strong className="text-ink capitalize">{profile.role}</strong> <span className="text-ink-muted">role</span></div>
+          </div>
+          {profile.restrictions.length > 0 && (
+            <div className="text-[11px] text-verdict-amber border-t border-line-soft pt-2">
+              Restrictions on this account: {profile.restrictions.join(", ")}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-5 min-w-0">
-        <LocalModeBanner />
-
-        <Section title={`Claims (${claims.length})`}>
-          {claims.length === 0
-            ? <p className="text-[13px] text-ink-muted">No claims posted yet.</p>
-            : <ul className="space-y-2.5">{claims.map((c) => <li key={c.id}><ClaimPostCard claim={c} /></li>)}</ul>}
-        </Section>
-
-        <Section title={`Collections (${collections.length})`}>
-          {collections.length === 0
-            ? <p className="text-[13px] text-ink-muted">No collections yet.</p>
-            : <ul className="space-y-2.5">{collections.map((c) => <li key={c.id}><CollectionPreviewCard collection={c} /></li>)}</ul>}
-        </Section>
-
-        <Section title={`Debates (${debates.length})`}>
-          {debates.length === 0
-            ? <p className="text-[13px] text-ink-muted">Not in any debate rooms yet.</p>
-            : <ul className="space-y-2.5">{debates.map((d) => <li key={d.id}><DebateRoomCard room={d} /></li>)}</ul>}
-        </Section>
+      <div className="space-y-4 min-w-0">
+        <h2 className="text-[15px] font-bold text-ink">Claims ({claims.length})</h2>
+        {claims.length === 0 ? (
+          <div className="card p-6 text-center text-[13px] text-ink-muted">
+            @{profile.username} hasn&apos;t posted any public claims yet.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {claims.map((c) => (
+              <li key={c.id} className="card p-3 hover:border-ink-deep transition-colors">
+                <Link href={`/community/${c.id}`} className="block">
+                  <div className="text-[15px] font-bold text-ink hover:underline">{c.title}</div>
+                  {c.body && <p className="text-[12.5px] text-ink-body line-clamp-2 mt-0.5">{c.body}</p>}
+                </Link>
+                <div className="flex items-center gap-2 text-[11px] text-ink-muted mt-1.5">
+                  <span className="px-1.5 py-0.5 rounded bg-section text-ink-body">{c.category.replace(/-/g, " ")}</span>
+                  <span>{c.evidenceCount} evidence · {c.commentCount} comments</span>
+                  <span className="ml-auto">{c.createdAt.slice(0, 10)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="space-y-2">
-      <h2 className="text-[14px] font-bold text-ink">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function computeProfile(account: LocalAccount, claims: ClaimThread[], collections: Collection[], debates: DebateRoom[]): ResearchProfile {
-  const evidenceAdded = claims.reduce((s, c) => s + c.evidence.length, 0);
-  const rebuttalsPosted = claims.reduce((s, c) => s + c.rebuttals.filter((r) => r.owner.authorUsername === account.username).length, 0);
-  const contextNotesPosted = claims.reduce((s, c) => s + c.contextNotes.filter((n) => n.owner.authorUsername === account.username).length, 0);
-  const collectionsPublic = collections.filter((c) => c.isPublic).length;
-
-  const claimsWithScore = claims.filter((c) => typeof c.sourceMeshSummary?.sourceQualityScore === "number");
-  const avgScore = claimsWithScore.length === 0
-    ? 0
-    : claimsWithScore.reduce((s, c) => s + (c.sourceMeshSummary?.sourceQualityScore ?? 0), 0) / claimsWithScore.length;
-  const avgEvidencePerClaim = claims.length === 0 ? 0 : evidenceAdded / claims.length;
-
-  const badges: ResearchBadge[] = [];
-  const now = new Date().toISOString();
-  if (claims.length >= 1)        badges.push({ kind: "first-claim",          earnedAt: now, label: "First claim",          detail: "You've posted at least one claim." });
-  if (collections.length >= 1)   badges.push({ kind: "first-collection",     earnedAt: now, label: "First collection",     detail: "You've created at least one collection." });
-  if (claims.length >= 5 && evidenceAdded >= claims.length) badges.push({ kind: "evidence-contributor", earnedAt: now, label: "Evidence contributor", detail: "5+ claims with at least one source each." });
-  if (contextNotesPosted >= 3)   badges.push({ kind: "context-noter",        earnedAt: now, label: "Context noter",        detail: "3+ context notes posted." });
-  if (debates.length >= 1)       badges.push({ kind: "debater",              earnedAt: now, label: "Debater",              detail: "Joined or hosted at least one debate room." });
-  if (collections.some((c) => c.items.length >= 5)) badges.push({ kind: "researcher", earnedAt: now, label: "Researcher", detail: "At least one collection with 5+ items." });
-  if (claims.length >= 2 && claims.every((c) => c.evidence.length >= 2)) badges.push({ kind: "transparency", earnedAt: now, label: "Transparency", detail: "Every claim has ≥2 evidence items." });
-
-  const tags = new Set<string>();
-  for (const c of claims) for (const t of c.tags) tags.add(t);
-  for (const c of collections) for (const t of c.tags) tags.add(t);
-
-  return {
-    username: account.username,
-    displayName: account.displayName,
-    bio: "Local research profile. Stats are computed from your saved claims, collections, and debates.",
-    joinedAt: account.createdAt,
-    topicInterests: Array.from(tags).slice(0, 12),
-    badges,
-    metrics: {
-      claimsPosted: claims.length,
-      evidenceAdded,
-      rebuttalsPosted,
-      contextNotesPosted,
-      debatesEntered: debates.length,
-      collectionsPublic,
-      avgEvidencePerClaim,
-      avgSourceQualityScore: avgScore,
-    },
-  };
 }

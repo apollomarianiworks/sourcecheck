@@ -1,97 +1,90 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getLocalAccount, signInLocal, signOutLocal, subscribeLocalAccount, type LocalAccount } from "@/lib/auth/local";
-import { isFirebaseConfigured, firebaseConfigGaps } from "@/lib/auth/firebase";
+import { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/lib/firebase/auth-hook";
+import { isFirebaseConfigured, firebaseMissingEnv } from "@/lib/firebase/client";
 import Avatar from "./Avatar";
 
 /**
- * Top-right Sign-in button. PASS 16 ships local-only sign-in — a tiny prompt
- * captures a display name and saves it in localStorage. When Firebase env is
- * configured later, the button can route to Google sign-in instead.
+ * Top-right auth button — Firebase-aware.
+ *
+ *  - Not configured → shows a "setup needed" chip with the missing env vars in title.
+ *  - Loading → blank.
+ *  - Signed out → Sign in / Sign up.
+ *  - Signed in → avatar + dropdown to profile / saved / sign out.
  */
 export default function AuthButton() {
-  const [account, setAccount] = useState<LocalAccount | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const { status, user, profile, signOutNow } = useAuth();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
 
-  useEffect(() => {
-    setAccount(getLocalAccount());
-    setMounted(true);
-    return subscribeLocalAccount(setAccount);
-  }, []);
-
-  function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    const acc = signInLocal(name);
-    setAccount(acc);
-    setOpen(false);
-  }
-
-  if (!mounted) return <span className="text-[12px] text-ink-dim w-12" />;
-
-  if (account) {
+  if (status === "not-configured") {
     return (
-      <button
-        type="button"
-        onClick={() => {
-          if (confirm("Sign out? Your locally saved claims/collections will stay on this device.")) {
-            signOutLocal();
-            setAccount(null);
-          }
-        }}
-        className="flex items-center gap-1.5 text-[12px] px-1.5 py-1 rounded hover:bg-section"
-        title={`Signed in locally as @${account.username}`}
+      <span
+        title={`Missing env: ${firebaseMissingEnv().join(", ")}`}
+        className="text-[11px] text-ink-muted hidden sm:inline-block px-2 py-1 border border-line rounded"
       >
-        <Avatar name={account.displayName} size={22} />
-        <span className="text-ink-body hidden sm:inline">{account.displayName}</span>
-      </button>
+        Auth: setup needed
+      </span>
     );
   }
+
+  if (status === "loading") {
+    return <span className="text-[12px] text-ink-dim w-12 inline-block" aria-hidden="true">&nbsp;</span>;
+  }
+
+  if (status === "signed-out") {
+    return (
+      <div className="flex items-center gap-1">
+        <Link
+          href="/login"
+          className="text-[12px] px-2.5 py-1 rounded border border-line text-ink-body hover:bg-section no-underline"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/signup"
+          className="text-[12px] px-2.5 py-1 rounded bg-brand hover:bg-brand-hover text-white no-underline"
+        >
+          Sign up
+        </Link>
+      </div>
+    );
+  }
+
+  const name = profile?.displayName ?? user?.displayName ?? "You";
+  const username = profile?.username ?? (user?.uid.slice(0, 6) ?? "you");
+  const photo = profile?.photoURL ?? user?.photoURL ?? null;
 
   return (
     <div className="relative inline-block">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="text-[12px] px-2.5 py-1 rounded bg-brand hover:bg-brand-hover text-white"
+        className="flex items-center gap-1.5 text-[12px] px-1.5 py-1 rounded hover:bg-section"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={name}
       >
-        Sign in
+        <Avatar name={name} src={photo} size={24} />
+        <span className="text-ink-body hidden sm:inline">{name}</span>
+        <span aria-hidden="true" className="text-ink-dim">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-72 card p-3 z-50 space-y-2 text-[13px]">
-          <div className="font-bold text-ink">Local sign-in</div>
-          <p className="text-[12px] text-ink-muted leading-snug">
-            Pick a display name. Everything stays in this browser. No email, no password,
-            no server. {isFirebaseConfigured() ? "" : "Google sign-in not configured yet."}
-          </p>
-          <form onSubmit={handleSignIn} className="flex items-center gap-1.5">
-            <input
-              type="text"
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your display name"
-              maxLength={40}
-              className="flex-1 px-2 py-1 border border-line rounded text-[13px]"
-            />
-            <button
-              type="submit"
-              disabled={name.trim().length < 1}
-              className="text-[12px] bg-brand hover:bg-brand-hover text-white px-3 py-1 rounded disabled:opacity-40"
-            >
-              Sign in
-            </button>
-          </form>
+        <div role="menu" className="absolute right-0 top-full mt-1 w-56 card p-2 z-50 space-y-1 text-[13px]">
+          <div className="px-2 py-1 text-[11px] text-ink-muted">@{username}</div>
+          <Link href={`/profile/${username}`} onClick={() => setOpen(false)} className="block px-2 py-1.5 rounded hover:bg-section no-underline text-ink">My profile</Link>
+          <Link href="/profile?tab=saved"    onClick={() => setOpen(false)} className="block px-2 py-1.5 rounded hover:bg-section no-underline text-ink">Saved items</Link>
+          <Link href="/community"            onClick={() => setOpen(false)} className="block px-2 py-1.5 rounded hover:bg-section no-underline text-ink">Community feed</Link>
+          <button
+            type="button"
+            onClick={async () => { await signOutNow(); setOpen(false); }}
+            className="w-full text-left px-2 py-1.5 rounded hover:bg-section text-verdict-red"
+          >
+            Sign out
+          </button>
           {!isFirebaseConfigured() && (
-            <details className="text-[11px] text-ink-dim">
-              <summary>Enable Google sign-in</summary>
-              <p className="mt-1">
-                Set these env vars and install firebase:{" "}
-                <code className="bg-section px-1 rounded">{firebaseConfigGaps().join(", ")}</code>
-              </p>
-            </details>
+            <div className="text-[11px] text-ink-dim px-2 pt-1">Firebase setup pending.</div>
           )}
         </div>
       )}

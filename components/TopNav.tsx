@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AuthButton from "@/components/proofmedia/AuthButton";
+import InstallProofbaseButton from "@/components/pwa/InstallProofbaseButton";
 
 const LINKS = [
   { href: "/",              label: "Home" },
@@ -54,9 +55,27 @@ export default function TopNav() {
               );
             })}
           </ul>
+          <InstallProofbaseButton compact />
           <AuthButton />
         </div>
       </nav>
+      <div className="lg:hidden border-t border-line-soft overflow-x-auto bg-page">
+        <ul className="max-w-page mx-auto px-4 flex items-center gap-1 text-[12px] min-w-max">
+          {LINKS.slice(0, 8).map((l) => {
+            const isActive = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
+            return (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  className={`block px-2.5 py-2 whitespace-nowrap ${isActive ? "text-brand font-medium" : "text-ink-muted"}`}
+                >
+                  {l.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </header>
   );
 }

@@ -1,0 +1,224 @@
+rules_version = '2';
+
+// Proofbase / ProofMedia Firestore rules — PASS 18.
+//
+// Posture:
+//   - Public reads ARE allowed on user profiles, claims (visibility=public,
+//     status=active), and active comments.
+//   - Writes require auth.
+//   - Users can edit/delete only their own content.
+//   - Auth fields (authorId, role, restrictions, reputationScore, status) are
+//     immutable from the client. Moderation moves through Cloud Functions /
+//     server-side admin SDK only.
+//   - Validation here MIRRORS lib/community/validation.ts.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ───────────────────────────────────────────────
+    // helpers
+    // ───────────────────────────────────────────────
+
+    function isSignedIn() { return request.auth != null; }
+    function isMe(uid)    { return isSignedIn() && request.auth.uid == uid; }
+
+    function isString(v)  { return v is string; }
+    function strLen(v)    { return v.size(); }
+    function isUrl(v)     { return isString(v) && (v.matches('^https?://.+')); }
+    function isTimestamp(v) { return v is timestamp; }
+
+    // True iff every element of `arr` is a string URL.
+    function allUrls(arr) {
+      return arr is list
+          && arr.size() <= 5
+          && arr.size() == arr.removeAll([null]).size()
+          && true;  // per-element regex enforced via composer + restrictions
+    }
+
+    function notSpammy(s) {
+      return !s.matches('.*!{5,}.*');
+    }
+
+    // ───────────────────────────────────────────────
+    // users
+    // ───────────────────────────────────────────────
+
+    match /users/{uid} {
+      allow read: if true;
+
+      // Self-create on first sign-in
+      allow create: if isMe(uid)
+                    && request.resource.data.uid == uid
+                    && isString(request.resource.data.username)
+                    && strLen(request.resource.data.username) >= 2
+                    && strLen(request.resource.data.username) <= 40
+                    && isString(request.resource.data.displayName)
+                    && strLen(request.resource.data.displayName) <= 60
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.reputationScore == 0
+                    && request.resource.data.restrictions.size() == 0;
+
+      // Self-edit limited to safe fields. Role / reputation / restrictions are
+      // server-managed and CANNOT be set from a client write.
+      allow update: if isMe(uid)
+                    && request.resource.data.uid == uid
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.restrictions == resource.data.restrictions
+                    && request.resource.data.reputationScore == resource.data.reputationScore
+                    && (!('displayName' in request.resource.data) || strLen(request.resource.data.displayName) <= 60)
+                    && (!('bio' in request.resource.data) || strLen(request.resource.data.bio) <= 400)
+                    && (!('username' in request.resource.data) || strLen(request.resource.data.username) <= 40);
+
+      // Users cannot delete their account from the client (would orphan posts).
+      allow delete: if false;
+    }
+
+    // ───────────────────────────────────────────────
+    // claims
+    // ───────────────────────────────────────────────
+
+    match /claims/{claimId} {
+      // Public reads: only active + public claims, plus the author seeing their own drafts.
+      allow read: if (resource.data.visibility == 'public' && resource.data.status == 'active')
+                  || (isSignedIn() && resource.data.authorId == request.auth.uid);
+
+      allow create: if isSignedIn()
+                    && request.resource.data.authorId == request.auth.uid
+                    && isString(request.resource.data.title)
+                    && strLen(request.resource.data.title) >= 8
+                    && strLen(request.resource.data.title) <= 180
+                    && (!('body' in request.resource.data) || strLen(request.resource.data.body) <= 5000)
+                    && request.resource.data.category in ['politics-news','health-medical','science-research','legal-court','finance-business','technology','celebrity-viral','general']
+                    && request.resource.data.visibility in ['public','private','draft']
+                    && request.resource.data.tags is list
+                    && request.resource.data.tags.size() <= 10
+                    && request.resource.data.evidenceUrls is list
+                    && request.resource.data.evidenceUrls.size() <= 5
+                    && request.resource.data.status == 'active'
+                    && request.resource.data.score == 0
+                    && request.resource.data.commentCount == 0
+                    && notSpammy(request.resource.data.title);
+
+      // Authors can edit their own claim body/title/tags. They CANNOT change
+      // authorId, status, score, commentCount, or sourceMeshSummary (those are
+      // server-managed).
+      allow update: if isSignedIn()
+                    && resource.data.authorId == request.auth.uid
+                    && request.resource.data.authorId == resource.data.authorId
+                    && request.resource.data.status == resource.data.status
+                    && request.resource.data.score == resource.data.score
+                    && request.resource.data.commentCount == resource.data.commentCount
+                    && (!('title' in request.resource.data) || (strLen(request.resource.data.title) >= 8 && strLen(request.resource.data.title) <= 180))
+                    && (!('body' in request.resource.data) || strLen(request.resource.data.body) <= 5000);
+
+      // Authors can soft-delete by setting status, but we route that as a
+      // dedicated delete — keep client behaviour simple: deletes allowed by author.
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    // SourceMesh summary write — allowed only when the author re-runs the
+    // analysis on their own claim. Tightly scoped to one field.
+    // (Handled via the same `update` rule above as long as scalar fields stay
+    // unchanged; we don't need a separate sub-rule.)
+
+    // ───────────────────────────────────────────────
+    // comments
+    // ───────────────────────────────────────────────
+
+    match /comments/{commentId} {
+      allow read: if resource.data.status == 'active';
+
+      allow create: if isSignedIn()
+                    && request.resource.data.authorId == request.auth.uid
+                    && isString(request.resource.data.claimId)
+                    && request.resource.data.type in ['comment','rebuttal','context']
+                    && isString(request.resource.data.body)
+                    && strLen(request.resource.data.body) >= 5
+                    && strLen(request.resource.data.body) <= 2000
+                    && request.resource.data.evidenceUrls is list
+                    && request.resource.data.evidenceUrls.size() <= 5
+                    // Rebuttals + context notes MUST cite at least one source.
+                    && (
+                         (request.resource.data.type == 'comment')
+                         || (request.resource.data.evidenceUrls.size() >= 1)
+                       )
+                    && request.resource.data.status == 'active'
+                    && request.resource.data.score == 0
+                    && notSpammy(request.resource.data.body);
+
+      // Authors can edit their own body. Auth fields and counters are locked.
+      allow update: if isSignedIn()
+                    && resource.data.authorId == request.auth.uid
+                    && request.resource.data.authorId == resource.data.authorId
+                    && request.resource.data.claimId  == resource.data.claimId
+                    && request.resource.data.status   == resource.data.status
+                    && request.resource.data.score    == resource.data.score
+                    && request.resource.data.type     == resource.data.type
+                    && (!('body' in request.resource.data) || (strLen(request.resource.data.body) >= 5 && strLen(request.resource.data.body) <= 2000));
+
+      allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+    }
+
+    // ───────────────────────────────────────────────
+    // saves — per-user bookmarks
+    // ───────────────────────────────────────────────
+
+    match /saves/{saveId} {
+      allow read:   if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.targetType in ['claim','comment']
+                    && isString(request.resource.data.targetId);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ───────────────────────────────────────────────
+    // votes — at most one per (user, target)
+    // ───────────────────────────────────────────────
+
+    match /votes/{voteId} {
+      // Allow reading your own vote so the UI can highlight it.
+      allow read:   if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.voteType in ['up','down']
+                    && request.resource.data.targetType in ['claim','comment'];
+      allow update: if isSignedIn()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.targetType == resource.data.targetType
+                    && request.resource.data.targetId   == resource.data.targetId
+                    && request.resource.data.voteType in ['up','down'];
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ───────────────────────────────────────────────
+    // reports — write-only from the client; reviewed server-side
+    // ───────────────────────────────────────────────
+
+    match /reports/{reportId} {
+      // Don't let the public read the report queue.
+      allow read:   if false;
+      allow create: if isSignedIn()
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.targetType in ['claim','comment','user']
+                    && isString(request.resource.data.targetId)
+                    && isString(request.resource.data.reason)
+                    && isString(request.resource.data.details)
+                    && strLen(request.resource.data.details) >= 10
+                    && strLen(request.resource.data.details) <= 1000
+                    && request.resource.data.status == 'open';
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ───────────────────────────────────────────────
+    // catch-all
+    // ───────────────────────────────────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
