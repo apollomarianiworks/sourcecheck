@@ -1,0 +1,134 @@
+{
+  "_meta": {
+    "version": 1,
+    "description": "Curated list of reputable RSS feeds. Each entry includes the feed URL, the publisher's editorial category, and any per-feed limitations. Feeds are fetched ONLY by id — we never accept arbitrary feed URLs from users."
+  },
+  "feeds": [
+    {
+      "id": "apnews-top",
+      "name": "AP News — Top Stories",
+      "url": "https://apnews.com/index.rss",
+      "publisher": "apnews.com",
+      "category": "mainstream-news",
+      "claimCategories": ["politics-news", "general"],
+      "limitations": "Headline aggregation; verify individual stories at the publisher."
+    },
+    {
+      "id": "npr-news",
+      "name": "NPR — News",
+      "url": "https://feeds.npr.org/1001/rss.xml",
+      "publisher": "npr.org",
+      "category": "mainstream-news",
+      "claimCategories": ["politics-news", "general"],
+      "limitations": "Curated public-radio newsfeed."
+    },
+    {
+      "id": "bbc-world",
+      "name": "BBC News — World",
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "publisher": "bbc.co.uk",
+      "category": "mainstream-news",
+      "claimCategories": ["politics-news", "general"],
+      "limitations": "BBC newsroom output; UK and global coverage."
+    },
+    {
+      "id": "pbs-newshour",
+      "name": "PBS NewsHour",
+      "url": "https://www.pbs.org/newshour/feeds/rss/headlines",
+      "publisher": "pbs.org",
+      "category": "mainstream-news",
+      "claimCategories": ["politics-news", "general"],
+      "limitations": "US-focused public-broadcasting feed."
+    },
+    {
+      "id": "factcheck-org",
+      "name": "FactCheck.org",
+      "url": "https://www.factcheck.org/feed/",
+      "publisher": "factcheck.org",
+      "category": "fact-checker",
+      "claimCategories": ["politics-news", "general", "health-medical"],
+      "limitations": "Annenberg Public Policy Center fact-checking; non-partisan."
+    },
+    {
+      "id": "politifact",
+      "name": "PolitiFact",
+      "url": "https://www.politifact.com/rss/factchecks/",
+      "publisher": "politifact.com",
+      "category": "fact-checker",
+      "claimCategories": ["politics-news", "general"],
+      "limitations": "Truth-O-Meter ratings; primarily US political claims."
+    },
+    {
+      "id": "snopes",
+      "name": "Snopes",
+      "url": "https://www.snopes.com/feed/",
+      "publisher": "snopes.com",
+      "category": "fact-checker",
+      "claimCategories": ["celebrity-viral", "general"],
+      "limitations": "Viral-claim debunking; covers a wide variety of topics."
+    },
+    {
+      "id": "cdc-newsroom",
+      "name": "CDC — Newsroom",
+      "url": "https://tools.cdc.gov/api/v2/resources/media/316422.rss",
+      "publisher": "cdc.gov",
+      "category": "government",
+      "claimCategories": ["health-medical"],
+      "limitations": "Official US Centers for Disease Control announcements."
+    },
+    {
+      "id": "nih-news",
+      "name": "NIH — News Releases",
+      "url": "https://www.nih.gov/news-events/news-releases/feed.xml",
+      "publisher": "nih.gov",
+      "category": "government",
+      "claimCategories": ["health-medical", "science-research"],
+      "limitations": "Official US National Institutes of Health press releases."
+    },
+    {
+      "id": "nasa-news",
+      "name": "NASA — News & Features",
+      "url": "https://www.nasa.gov/feeds/iotd-feed/",
+      "publisher": "nasa.gov",
+      "category": "government",
+      "claimCategories": ["science-research"],
+      "limitations": "NASA media feed."
+    },
+    {
+      "id": "bls-news",
+      "name": "BLS — News Releases",
+      "url": "https://www.bls.gov/feed/news_release.rss",
+      "publisher": "bls.gov",
+      "category": "government",
+      "claimCategories": ["finance-business", "politics-news"],
+      "limitations": "US Bureau of Labor Statistics press releases."
+    },
+    {
+      "id": "census-news",
+      "name": "US Census Bureau — News",
+      "url": "https://www.census.gov/newsroom.rss",
+      "publisher": "census.gov",
+      "category": "government",
+      "claimCategories": ["finance-business", "politics-news"],
+      "limitations": "US Census Bureau news releases."
+    },
+    {
+      "id": "ftc-press",
+      "name": "FTC — Press Releases",
+      "url": "https://www.ftc.gov/feeds/press-releases.xml",
+      "publisher": "ftc.gov",
+      "category": "government",
+      "claimCategories": ["finance-business", "politics-news"],
+      "limitations": "US Federal Trade Commission press releases."
+    },
+    {
+      "id": "sec-press",
+      "name": "SEC — Press Releases",
+      "url": "https://www.sec.gov/news/pressreleases.rss",
+      "publisher": "sec.gov",
+      "category": "government",
+      "claimCategories": ["finance-business"],
+      "limitations": "US Securities and Exchange Commission press releases."
+    }
+  ]
+}

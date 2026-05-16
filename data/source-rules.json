@@ -1,0 +1,983 @@
+{
+  "_meta": {
+    "version": 1,
+    "description": "Local source reputation rules. This database GUIDES quality scoring — it does NOT decide whether a claim is true. baseQualityScore reflects the outlet's editorial track record, not the truth of any specific story.",
+    "categories": [
+      "official-government",
+      "court-legal",
+      "academic-research",
+      "medical-science",
+      "established-news",
+      "local-news",
+      "advocacy",
+      "fact-checker",
+      "encyclopedia",
+      "satire",
+      "tabloid",
+      "conspiracy",
+      "blog",
+      "user-generated-social",
+      "unknown"
+    ]
+  },
+
+  "sources": {
+    "reuters.com": {
+      "domain": "reuters.com",
+      "category": "established-news",
+      "baseQualityScore": 92,
+      "notes": "International wire service. Strict editorial standards, published corrections policy.",
+      "warningFlags": ["paywall-soft"],
+      "preferredUse": "Breaking news verification, primary wire reporting"
+    },
+    "apnews.com": {
+      "domain": "apnews.com",
+      "category": "established-news",
+      "baseQualityScore": 91,
+      "notes": "Associated Press wire service. Cooperative-owned, used by most major outlets as a feed.",
+      "warningFlags": [],
+      "preferredUse": "Breaking news verification, primary wire reporting"
+    },
+    "bbc.com": {
+      "domain": "bbc.com",
+      "category": "established-news",
+      "baseQualityScore": 89,
+      "notes": "British public broadcaster. Strict editorial guidelines, on-air corrections.",
+      "warningFlags": [],
+      "preferredUse": "International news, in-depth reporting"
+    },
+    "bbc.co.uk": {
+      "domain": "bbc.co.uk",
+      "category": "established-news",
+      "baseQualityScore": 89,
+      "notes": "BBC main UK domain. Same editorial standards as bbc.com.",
+      "warningFlags": [],
+      "preferredUse": "UK and international news"
+    },
+    "npr.org": {
+      "domain": "npr.org",
+      "category": "established-news",
+      "baseQualityScore": 87,
+      "notes": "US public radio network. Published ethics handbook, corrections section.",
+      "warningFlags": [],
+      "preferredUse": "US news, long-form audio reporting"
+    },
+    "theguardian.com": {
+      "domain": "theguardian.com",
+      "category": "established-news",
+      "baseQualityScore": 84,
+      "notes": "UK national newspaper. Editorial independence from ownership; corrections column.",
+      "warningFlags": ["opinion-heavy"],
+      "preferredUse": "UK and international reporting, investigations"
+    },
+    "nytimes.com": {
+      "domain": "nytimes.com",
+      "category": "established-news",
+      "baseQualityScore": 83,
+      "notes": "US newspaper of record. Public-editor tradition, corrections policy.",
+      "warningFlags": ["paywall", "opinion-heavy"],
+      "preferredUse": "In-depth US reporting, investigations"
+    },
+    "washingtonpost.com": {
+      "domain": "washingtonpost.com",
+      "category": "established-news",
+      "baseQualityScore": 83,
+      "notes": "US daily newspaper. Pinocchio fact-check feature, corrections policy.",
+      "warningFlags": ["paywall"],
+      "preferredUse": "Political reporting, fact-checking columns"
+    },
+    "wsj.com": {
+      "domain": "wsj.com",
+      "category": "established-news",
+      "baseQualityScore": 82,
+      "notes": "Business newspaper. Strict separation of news and editorial pages.",
+      "warningFlags": ["paywall", "opinion-heavy"],
+      "preferredUse": "Business and financial news"
+    },
+    "economist.com": {
+      "domain": "economist.com",
+      "category": "established-news",
+      "baseQualityScore": 85,
+      "notes": "UK-based long-form journalism. Internal fact-checking staff.",
+      "warningFlags": ["paywall", "anonymous-bylines"],
+      "preferredUse": "Analysis of global affairs and economics"
+    },
+    "ft.com": {
+      "domain": "ft.com",
+      "category": "established-news",
+      "baseQualityScore": 84,
+      "notes": "Financial Times. UK-based business daily, FT editorial code.",
+      "warningFlags": ["paywall"],
+      "preferredUse": "Business and financial news"
+    },
+    "bloomberg.com": {
+      "domain": "bloomberg.com",
+      "category": "established-news",
+      "baseQualityScore": 82,
+      "notes": "Business news service. Strong financial data sourcing.",
+      "warningFlags": ["paywall"],
+      "preferredUse": "Markets, business, financial data"
+    },
+    "cnn.com": {
+      "domain": "cnn.com",
+      "category": "established-news",
+      "baseQualityScore": 74,
+      "notes": "24-hour cable news. Speed-vs-accuracy tradeoffs documented.",
+      "warningFlags": ["speed-over-accuracy", "opinion-heavy"],
+      "preferredUse": "Breaking news (verify with wires before sharing)"
+    },
+    "foxnews.com": {
+      "domain": "foxnews.com",
+      "category": "established-news",
+      "baseQualityScore": 52,
+      "notes": "Cable news with documented news/opinion blending. Press critics have flagged framing issues.",
+      "warningFlags": ["ideological-lean-right", "opinion-heavy", "blends-news-and-commentary"],
+      "preferredUse": "Reference for one perspective only — verify factual claims elsewhere"
+    },
+    "msnbc.com": {
+      "domain": "msnbc.com",
+      "category": "established-news",
+      "baseQualityScore": 60,
+      "notes": "Cable news. Opinion-led primetime; news/opinion separation weaker than legacy outlets.",
+      "warningFlags": ["ideological-lean-left", "opinion-heavy"],
+      "preferredUse": "Reference for one perspective only — verify factual claims elsewhere"
+    },
+    "cbsnews.com": {
+      "domain": "cbsnews.com",
+      "category": "established-news",
+      "baseQualityScore": 79,
+      "notes": "US broadcast news division.",
+      "warningFlags": [],
+      "preferredUse": "US news"
+    },
+    "abcnews.go.com": {
+      "domain": "abcnews.go.com",
+      "category": "established-news",
+      "baseQualityScore": 79,
+      "notes": "US broadcast news division.",
+      "warningFlags": [],
+      "preferredUse": "US news"
+    },
+    "nbcnews.com": {
+      "domain": "nbcnews.com",
+      "category": "established-news",
+      "baseQualityScore": 78,
+      "notes": "US broadcast news division.",
+      "warningFlags": [],
+      "preferredUse": "US news"
+    },
+    "usatoday.com": {
+      "domain": "usatoday.com",
+      "category": "established-news",
+      "baseQualityScore": 75,
+      "notes": "Gannett-owned national daily.",
+      "warningFlags": [],
+      "preferredUse": "General US news"
+    },
+    "time.com": {
+      "domain": "time.com",
+      "category": "established-news",
+      "baseQualityScore": 78,
+      "notes": "Legacy weekly magazine; long-form journalism.",
+      "warningFlags": [],
+      "preferredUse": "Feature reporting and analysis"
+    },
+    "theatlantic.com": {
+      "domain": "theatlantic.com",
+      "category": "established-news",
+      "baseQualityScore": 80,
+      "notes": "Long-form magazine. Some advocacy in essays.",
+      "warningFlags": ["paywall", "opinion-heavy"],
+      "preferredUse": "Long-form essays and analysis"
+    },
+    "newyorker.com": {
+      "domain": "newyorker.com",
+      "category": "established-news",
+      "baseQualityScore": 82,
+      "notes": "Long-form magazine. Renowned fact-checking department.",
+      "warningFlags": ["paywall"],
+      "preferredUse": "Long-form journalism, investigative pieces"
+    },
+    "vox.com": {
+      "domain": "vox.com",
+      "category": "established-news",
+      "baseQualityScore": 74,
+      "notes": "Explanatory journalism with a documented progressive lean.",
+      "warningFlags": ["ideological-lean-left"],
+      "preferredUse": "Issue explainers — pair with primary sources"
+    },
+    "slate.com": {
+      "domain": "slate.com",
+      "category": "established-news",
+      "baseQualityScore": 71,
+      "notes": "Mixed news + opinion magazine.",
+      "warningFlags": ["opinion-heavy"],
+      "preferredUse": "Commentary, cultural analysis"
+    },
+    "axios.com": {
+      "domain": "axios.com",
+      "category": "established-news",
+      "baseQualityScore": 79,
+      "notes": "Bullet-point briefings; sources usually attributed.",
+      "warningFlags": [],
+      "preferredUse": "Politics and policy briefings"
+    },
+    "politico.com": {
+      "domain": "politico.com",
+      "category": "established-news",
+      "baseQualityScore": 80,
+      "notes": "Political news outlet with strong DC/EU sourcing.",
+      "warningFlags": [],
+      "preferredUse": "Political and policy reporting"
+    },
+    "thehill.com": {
+      "domain": "thehill.com",
+      "category": "established-news",
+      "baseQualityScore": 72,
+      "notes": "Congressional and political news outlet.",
+      "warningFlags": ["opinion-heavy"],
+      "preferredUse": "US political news"
+    },
+    "aljazeera.com": {
+      "domain": "aljazeera.com",
+      "category": "established-news",
+      "baseQualityScore": 75,
+      "notes": "Qatar-funded international broadcaster.",
+      "warningFlags": ["state-affiliated"],
+      "preferredUse": "Middle East and global south reporting"
+    },
+    "dw.com": {
+      "domain": "dw.com",
+      "category": "established-news",
+      "baseQualityScore": 80,
+      "notes": "Deutsche Welle — German public broadcaster.",
+      "warningFlags": ["state-affiliated-public"],
+      "preferredUse": "German and European news in English"
+    },
+
+    "census.gov": {
+      "domain": "census.gov",
+      "category": "official-government",
+      "baseQualityScore": 95,
+      "notes": "US Census Bureau. Primary source for US demographic and economic data.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing US population, demographic, or economic statistics"
+    },
+    "bls.gov": {
+      "domain": "bls.gov",
+      "category": "official-government",
+      "baseQualityScore": 95,
+      "notes": "US Bureau of Labor Statistics. Primary source for jobs, wages, inflation data.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing US employment, inflation, or wage statistics"
+    },
+    "cdc.gov": {
+      "domain": "cdc.gov",
+      "category": "official-government",
+      "baseQualityScore": 92,
+      "notes": "US Centers for Disease Control. Primary source for US public health data.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "US public health data and guidelines"
+    },
+    "nih.gov": {
+      "domain": "nih.gov",
+      "category": "official-government",
+      "baseQualityScore": 93,
+      "notes": "US National Institutes of Health. Funds and publishes biomedical research.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Biomedical research findings and health information"
+    },
+    "fda.gov": {
+      "domain": "fda.gov",
+      "category": "official-government",
+      "baseQualityScore": 92,
+      "notes": "US Food and Drug Administration. Primary source for drug approvals, food safety.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Drug approvals, food safety notices, regulatory actions"
+    },
+    "nasa.gov": {
+      "domain": "nasa.gov",
+      "category": "official-government",
+      "baseQualityScore": 94,
+      "notes": "US National Aeronautics and Space Administration. Primary source for US space programs.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Space missions, climate data, scientific results"
+    },
+    "noaa.gov": {
+      "domain": "noaa.gov",
+      "category": "official-government",
+      "baseQualityScore": 93,
+      "notes": "US National Oceanic and Atmospheric Administration. Climate, weather, oceans.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Climate, weather, and ocean data"
+    },
+    "epa.gov": {
+      "domain": "epa.gov",
+      "category": "official-government",
+      "baseQualityScore": 90,
+      "notes": "US Environmental Protection Agency. Environmental regulation and data.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Environmental data and regulations"
+    },
+    "congress.gov": {
+      "domain": "congress.gov",
+      "category": "official-government",
+      "baseQualityScore": 96,
+      "notes": "Official US Congress site. Full text of bills, voting records, member info.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing legislation text, votes, sponsors"
+    },
+    "whitehouse.gov": {
+      "domain": "whitehouse.gov",
+      "category": "official-government",
+      "baseQualityScore": 88,
+      "notes": "US Executive Branch site. Official statements, executive orders. Content reflects current administration position.",
+      "warningFlags": ["political-framing", "primary-source"],
+      "preferredUse": "Citing official US executive statements and orders"
+    },
+    "state.gov": {
+      "domain": "state.gov",
+      "category": "official-government",
+      "baseQualityScore": 86,
+      "notes": "US Department of State. Diplomatic statements and travel advisories.",
+      "warningFlags": ["political-framing", "primary-source"],
+      "preferredUse": "US foreign policy statements"
+    },
+    "who.int": {
+      "domain": "who.int",
+      "category": "official-government",
+      "baseQualityScore": 88,
+      "notes": "World Health Organization. International public health authority.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Global public health data and guidance"
+    },
+    "un.org": {
+      "domain": "un.org",
+      "category": "official-government",
+      "baseQualityScore": 84,
+      "notes": "United Nations. Resolutions, reports, agency publications.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing UN resolutions or agency reports"
+    },
+    "europa.eu": {
+      "domain": "europa.eu",
+      "category": "official-government",
+      "baseQualityScore": 86,
+      "notes": "European Union institutions umbrella domain.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "EU legislation, regulations, agency statements"
+    },
+
+    "supremecourt.gov": {
+      "domain": "supremecourt.gov",
+      "category": "court-legal",
+      "baseQualityScore": 97,
+      "notes": "US Supreme Court. Primary source for opinions, oral arguments, orders.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing Supreme Court opinions or orders"
+    },
+    "uscourts.gov": {
+      "domain": "uscourts.gov",
+      "category": "court-legal",
+      "baseQualityScore": 94,
+      "notes": "US Federal Courts. Information about district and appeals courts.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Federal court records and procedures"
+    },
+    "justice.gov": {
+      "domain": "justice.gov",
+      "category": "court-legal",
+      "baseQualityScore": 90,
+      "notes": "US Department of Justice. Press releases, indictments, civil-rights actions.",
+      "warningFlags": ["primary-source", "political-framing"],
+      "preferredUse": "Citing DOJ actions and statements"
+    },
+    "courtlistener.com": {
+      "domain": "courtlistener.com",
+      "category": "court-legal",
+      "baseQualityScore": 88,
+      "notes": "Free Law Project archive of court opinions and PACER documents.",
+      "warningFlags": [],
+      "preferredUse": "Locating US federal and state court opinions"
+    },
+    "oyez.org": {
+      "domain": "oyez.org",
+      "category": "court-legal",
+      "baseQualityScore": 86,
+      "notes": "Supreme Court multimedia archive maintained by Cornell/Chicago-Kent.",
+      "warningFlags": [],
+      "preferredUse": "Background on Supreme Court cases"
+    },
+    "eur-lex.europa.eu": {
+      "domain": "eur-lex.europa.eu",
+      "category": "court-legal",
+      "baseQualityScore": 92,
+      "notes": "Official portal to EU law, treaties, case law.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing EU legislation or court decisions"
+    },
+
+    "pubmed.ncbi.nlm.nih.gov": {
+      "domain": "pubmed.ncbi.nlm.nih.gov",
+      "category": "academic-research",
+      "baseQualityScore": 93,
+      "notes": "US National Library of Medicine biomedical-literature index. Doesn't itself peer-review but indexes peer-reviewed work.",
+      "warningFlags": ["abstracts-only", "primary-source"],
+      "preferredUse": "Finding original biomedical studies"
+    },
+    "arxiv.org": {
+      "domain": "arxiv.org",
+      "category": "academic-research",
+      "baseQualityScore": 78,
+      "notes": "Preprint server for physics, math, CS. NOT peer-reviewed at time of posting.",
+      "warningFlags": ["pre-peer-review"],
+      "preferredUse": "Reading preprints — confirm with peer-reviewed venue before citing"
+    },
+    "biorxiv.org": {
+      "domain": "biorxiv.org",
+      "category": "academic-research",
+      "baseQualityScore": 75,
+      "notes": "Biology preprint server. NOT peer-reviewed at posting.",
+      "warningFlags": ["pre-peer-review"],
+      "preferredUse": "Reading biology preprints — confirm peer-review status"
+    },
+    "medrxiv.org": {
+      "domain": "medrxiv.org",
+      "category": "academic-research",
+      "baseQualityScore": 75,
+      "notes": "Medical/health preprint server. NOT peer-reviewed at posting.",
+      "warningFlags": ["pre-peer-review", "health-claims-unreviewed"],
+      "preferredUse": "Reading medical preprints — DO NOT cite as final evidence"
+    },
+    "scholar.google.com": {
+      "domain": "scholar.google.com",
+      "category": "academic-research",
+      "baseQualityScore": 80,
+      "notes": "Academic search index. Indexes both peer-reviewed and unreviewed work.",
+      "warningFlags": [],
+      "preferredUse": "Discovering academic literature"
+    },
+    "pewresearch.org": {
+      "domain": "pewresearch.org",
+      "category": "academic-research",
+      "baseQualityScore": 92,
+      "notes": "Pew Research Center. Nonpartisan US think tank; publishes methodology with surveys.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing US public-opinion polling and demographic research"
+    },
+    "rand.org": {
+      "domain": "rand.org",
+      "category": "academic-research",
+      "baseQualityScore": 87,
+      "notes": "RAND Corporation. Nonpartisan policy research institute.",
+      "warningFlags": [],
+      "preferredUse": "Citing policy research reports"
+    },
+    "brookings.edu": {
+      "domain": "brookings.edu",
+      "category": "academic-research",
+      "baseQualityScore": 84,
+      "notes": "Brookings Institution. Center-left policy think tank.",
+      "warningFlags": ["ideological-lean-left"],
+      "preferredUse": "Policy analysis from a center-left perspective"
+    },
+
+    "nature.com": {
+      "domain": "nature.com",
+      "category": "medical-science",
+      "baseQualityScore": 95,
+      "notes": "Nature Publishing Group. Top-tier peer-reviewed scientific journal.",
+      "warningFlags": ["paywall", "primary-source"],
+      "preferredUse": "Citing peer-reviewed research findings"
+    },
+    "science.org": {
+      "domain": "science.org",
+      "category": "medical-science",
+      "baseQualityScore": 94,
+      "notes": "AAAS Science journal. Top-tier peer-reviewed scientific journal.",
+      "warningFlags": ["paywall", "primary-source"],
+      "preferredUse": "Citing peer-reviewed research findings"
+    },
+    "thelancet.com": {
+      "domain": "thelancet.com",
+      "category": "medical-science",
+      "baseQualityScore": 93,
+      "notes": "The Lancet. Major peer-reviewed medical journal. Publishes corrections.",
+      "warningFlags": ["paywall", "primary-source"],
+      "preferredUse": "Citing peer-reviewed medical research"
+    },
+    "nejm.org": {
+      "domain": "nejm.org",
+      "category": "medical-science",
+      "baseQualityScore": 94,
+      "notes": "New England Journal of Medicine. Major peer-reviewed medical journal.",
+      "warningFlags": ["paywall", "primary-source"],
+      "preferredUse": "Citing peer-reviewed clinical and medical research"
+    },
+    "bmj.com": {
+      "domain": "bmj.com",
+      "category": "medical-science",
+      "baseQualityScore": 91,
+      "notes": "The BMJ. Peer-reviewed medical journal.",
+      "warningFlags": ["paywall", "primary-source"],
+      "preferredUse": "Citing peer-reviewed medical research"
+    },
+    "cell.com": {
+      "domain": "cell.com",
+      "category": "medical-science",
+      "baseQualityScore": 92,
+      "notes": "Cell. Top-tier life-sciences journal.",
+      "warningFlags": ["paywall", "primary-source"],
+      "preferredUse": "Citing peer-reviewed biological research"
+    },
+    "pnas.org": {
+      "domain": "pnas.org",
+      "category": "medical-science",
+      "baseQualityScore": 90,
+      "notes": "Proceedings of the National Academy of Sciences. Peer-reviewed.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "Citing peer-reviewed research across sciences"
+    },
+    "mayoclinic.org": {
+      "domain": "mayoclinic.org",
+      "category": "medical-science",
+      "baseQualityScore": 88,
+      "notes": "Mayo Clinic. Reputable patient-facing medical information.",
+      "warningFlags": [],
+      "preferredUse": "Patient-facing medical information"
+    },
+    "nhs.uk": {
+      "domain": "nhs.uk",
+      "category": "medical-science",
+      "baseQualityScore": 89,
+      "notes": "UK National Health Service. Patient-facing public health guidance.",
+      "warningFlags": ["primary-source"],
+      "preferredUse": "UK public health guidance"
+    },
+
+    "patch.com": {
+      "domain": "patch.com",
+      "category": "local-news",
+      "baseQualityScore": 60,
+      "notes": "Hyperlocal news network. Quality varies by market.",
+      "warningFlags": ["quality-varies"],
+      "preferredUse": "Local/hyperlocal news stories"
+    },
+
+    "politifact.com": {
+      "domain": "politifact.com",
+      "category": "fact-checker",
+      "baseQualityScore": 88,
+      "notes": "Pulitzer-winning fact-checker (Poynter Institute). Uses Truth-O-Meter rating.",
+      "warningFlags": ["fact-checker"],
+      "preferredUse": "Verifying specific viral political claims"
+    },
+    "factcheck.org": {
+      "domain": "factcheck.org",
+      "category": "fact-checker",
+      "baseQualityScore": 87,
+      "notes": "Annenberg Public Policy Center fact-checker. Nonpartisan.",
+      "warningFlags": ["fact-checker"],
+      "preferredUse": "Verifying US political claims"
+    },
+    "snopes.com": {
+      "domain": "snopes.com",
+      "category": "fact-checker",
+      "baseQualityScore": 83,
+      "notes": "Long-running myth and rumor debunker. Covers viral claims and folklore.",
+      "warningFlags": ["fact-checker"],
+      "preferredUse": "Verifying viral claims, urban legends, hoaxes"
+    },
+    "fullfact.org": {
+      "domain": "fullfact.org",
+      "category": "fact-checker",
+      "baseQualityScore": 88,
+      "notes": "UK-based independent fact-checking charity.",
+      "warningFlags": ["fact-checker"],
+      "preferredUse": "Verifying UK claims"
+    },
+    "leadstories.com": {
+      "domain": "leadstories.com",
+      "category": "fact-checker",
+      "baseQualityScore": 80,
+      "notes": "Independent fact-checker; member of International Fact-Checking Network.",
+      "warningFlags": ["fact-checker"],
+      "preferredUse": "Verifying viral and social media claims"
+    },
+    "checkyourfact.com": {
+      "domain": "checkyourfact.com",
+      "category": "fact-checker",
+      "baseQualityScore": 76,
+      "notes": "Independent fact-checking subsidiary. IFCN-verified.",
+      "warningFlags": ["fact-checker"],
+      "preferredUse": "Verifying US political and viral claims"
+    },
+    "factcheck.afp.com": {
+      "domain": "factcheck.afp.com",
+      "category": "fact-checker",
+      "baseQualityScore": 85,
+      "notes": "AFP wire service fact-checking unit.",
+      "warningFlags": ["fact-checker"],
+      "preferredUse": "Verifying international viral claims"
+    },
+
+    "wikipedia.org": {
+      "domain": "wikipedia.org",
+      "category": "encyclopedia",
+      "baseQualityScore": 72,
+      "notes": "Crowd-sourced encyclopedia. Use as orientation, verify primary sources cited in articles.",
+      "warningFlags": ["user-edited", "verify-primary-sources"],
+      "preferredUse": "Background context — follow citations to primary sources"
+    },
+    "en.wikipedia.org": {
+      "domain": "en.wikipedia.org",
+      "category": "encyclopedia",
+      "baseQualityScore": 72,
+      "notes": "English-language Wikipedia. Same as wikipedia.org.",
+      "warningFlags": ["user-edited", "verify-primary-sources"],
+      "preferredUse": "Background context — follow citations to primary sources"
+    },
+    "britannica.com": {
+      "domain": "britannica.com",
+      "category": "encyclopedia",
+      "baseQualityScore": 82,
+      "notes": "Encyclopaedia Britannica. Editorially curated, signed articles.",
+      "warningFlags": [],
+      "preferredUse": "Curated encyclopedia entries"
+    },
+
+    "dailymail.co.uk": {
+      "domain": "dailymail.co.uk",
+      "category": "tabloid",
+      "baseQualityScore": 42,
+      "notes": "UK tabloid. Multiple IPSO rulings against; accuracy disputes documented.",
+      "warningFlags": ["sensationalism", "accuracy-disputed"],
+      "preferredUse": "Reference for celebrity/lifestyle items only — verify any factual claim elsewhere"
+    },
+    "nypost.com": {
+      "domain": "nypost.com",
+      "category": "tabloid",
+      "baseQualityScore": 50,
+      "notes": "News Corp tabloid. Sensationalist framing common.",
+      "warningFlags": ["sensationalism", "ideological-lean-right"],
+      "preferredUse": "Reference with caution — verify factual claims elsewhere"
+    },
+    "thesun.co.uk": {
+      "domain": "thesun.co.uk",
+      "category": "tabloid",
+      "baseQualityScore": 38,
+      "notes": "UK tabloid. Multiple IPSO rulings against; documented accuracy issues.",
+      "warningFlags": ["sensationalism", "accuracy-disputed"],
+      "preferredUse": "Reference with strong caution"
+    },
+    "mirror.co.uk": {
+      "domain": "mirror.co.uk",
+      "category": "tabloid",
+      "baseQualityScore": 45,
+      "notes": "UK tabloid. Sensationalist framing common.",
+      "warningFlags": ["sensationalism"],
+      "preferredUse": "Reference with caution"
+    },
+    "tmz.com": {
+      "domain": "tmz.com",
+      "category": "tabloid",
+      "baseQualityScore": 50,
+      "notes": "Celebrity-focused tabloid. Often breaks stories first; verify before citing.",
+      "warningFlags": ["sensationalism", "celebrity-focus"],
+      "preferredUse": "Celebrity news — verify before citing"
+    },
+
+    "breitbart.com": {
+      "domain": "breitbart.com",
+      "category": "advocacy",
+      "baseQualityScore": 22,
+      "notes": "Far-right political commentary. Multiple fact-check failures documented.",
+      "warningFlags": ["ideological-lean-right", "misinformation-history", "blends-news-and-commentary"],
+      "preferredUse": "Reference for one political perspective only — never as sole factual source"
+    },
+    "huffpost.com": {
+      "domain": "huffpost.com",
+      "category": "advocacy",
+      "baseQualityScore": 58,
+      "notes": "Aggregator with progressive editorial slant.",
+      "warningFlags": ["ideological-lean-left", "opinion-heavy"],
+      "preferredUse": "Reference for one political perspective"
+    },
+    "dailywire.com": {
+      "domain": "dailywire.com",
+      "category": "advocacy",
+      "baseQualityScore": 38,
+      "notes": "Conservative commentary outlet.",
+      "warningFlags": ["ideological-lean-right", "opinion-heavy"],
+      "preferredUse": "Reference for one political perspective"
+    },
+    "motherjones.com": {
+      "domain": "motherjones.com",
+      "category": "advocacy",
+      "baseQualityScore": 67,
+      "notes": "Progressive investigative magazine. Disclosed editorial mission.",
+      "warningFlags": ["ideological-lean-left"],
+      "preferredUse": "Investigative pieces with progressive framing"
+    },
+    "reason.com": {
+      "domain": "reason.com",
+      "category": "advocacy",
+      "baseQualityScore": 64,
+      "notes": "Libertarian magazine. Disclosed editorial mission.",
+      "warningFlags": ["ideological-lean-libertarian"],
+      "preferredUse": "Libertarian perspective on policy"
+    },
+
+    "infowars.com": {
+      "domain": "infowars.com",
+      "category": "conspiracy",
+      "baseQualityScore": 5,
+      "notes": "Conspiracy site with sustained misinformation history.",
+      "warningFlags": ["misinformation-history", "conspiracy", "courts-found-defamation"],
+      "preferredUse": "DO NOT cite. Documented pattern of fabricated claims."
+    },
+    "naturalnews.com": {
+      "domain": "naturalnews.com",
+      "category": "conspiracy",
+      "baseQualityScore": 8,
+      "notes": "Pseudoscience/conspiracy outlet. Removed from Google News for health misinformation.",
+      "warningFlags": ["misinformation-history", "conspiracy", "health-misinformation"],
+      "preferredUse": "DO NOT cite for health information"
+    },
+    "beforeitsnews.com": {
+      "domain": "beforeitsnews.com",
+      "category": "conspiracy",
+      "baseQualityScore": 6,
+      "notes": "User-submitted conspiracy and fringe content; no editorial vetting.",
+      "warningFlags": ["misinformation-history", "user-generated", "conspiracy"],
+      "preferredUse": "DO NOT cite"
+    },
+    "thegatewaypundit.com": {
+      "domain": "thegatewaypundit.com",
+      "category": "conspiracy",
+      "baseQualityScore": 8,
+      "notes": "Far-right blog with sustained false-claim history. Courts and platforms have taken action against it.",
+      "warningFlags": ["misinformation-history", "ideological-lean-right", "courts-found-defamation"],
+      "preferredUse": "DO NOT cite"
+    },
+
+    "theonion.com": {
+      "domain": "theonion.com",
+      "category": "satire",
+      "baseQualityScore": 10,
+      "notes": "Intentional satire. Headlines are jokes, not news.",
+      "warningFlags": ["satire-warning"],
+      "preferredUse": "Entertainment only — never as a factual source"
+    },
+    "babylonbee.com": {
+      "domain": "babylonbee.com",
+      "category": "satire",
+      "baseQualityScore": 10,
+      "notes": "Intentional satire (conservative-leaning). Headlines are jokes.",
+      "warningFlags": ["satire-warning", "ideological-lean-right"],
+      "preferredUse": "Entertainment only — never as a factual source"
+    },
+    "clickhole.com": {
+      "domain": "clickhole.com",
+      "category": "satire",
+      "baseQualityScore": 10,
+      "notes": "Intentional satire of clickbait.",
+      "warningFlags": ["satire-warning"],
+      "preferredUse": "Entertainment only — never as a factual source"
+    },
+    "reductress.com": {
+      "domain": "reductress.com",
+      "category": "satire",
+      "baseQualityScore": 10,
+      "notes": "Intentional satire of women's lifestyle media.",
+      "warningFlags": ["satire-warning"],
+      "preferredUse": "Entertainment only — never as a factual source"
+    },
+
+    "reddit.com": {
+      "domain": "reddit.com",
+      "category": "user-generated-social",
+      "baseQualityScore": 35,
+      "notes": "User-generated forum. No editorial oversight; community moderation varies.",
+      "warningFlags": ["user-generated", "no-editorial-oversight"],
+      "preferredUse": "Trend signals, primary-source links shared by users — verify before citing"
+    },
+    "twitter.com": {
+      "domain": "twitter.com",
+      "category": "user-generated-social",
+      "baseQualityScore": 30,
+      "notes": "Social media. No editorial oversight; viral misinformation common.",
+      "warningFlags": ["user-generated", "no-editorial-oversight", "viral-misinformation-risk"],
+      "preferredUse": "Real-time signal only — never as primary source"
+    },
+    "x.com": {
+      "domain": "x.com",
+      "category": "user-generated-social",
+      "baseQualityScore": 30,
+      "notes": "Same platform as twitter.com.",
+      "warningFlags": ["user-generated", "no-editorial-oversight", "viral-misinformation-risk"],
+      "preferredUse": "Real-time signal only — never as primary source"
+    },
+    "facebook.com": {
+      "domain": "facebook.com",
+      "category": "user-generated-social",
+      "baseQualityScore": 25,
+      "notes": "Social network. No editorial oversight; documented misinformation amplification.",
+      "warningFlags": ["user-generated", "no-editorial-oversight", "viral-misinformation-risk"],
+      "preferredUse": "Never as primary source"
+    },
+    "youtube.com": {
+      "domain": "youtube.com",
+      "category": "user-generated-social",
+      "baseQualityScore": 35,
+      "notes": "Video platform. Channel quality varies wildly; verify creator credentials.",
+      "warningFlags": ["user-generated", "no-editorial-oversight"],
+      "preferredUse": "Identify the creator; treat as primary only if creator is one"
+    },
+    "tiktok.com": {
+      "domain": "tiktok.com",
+      "category": "user-generated-social",
+      "baseQualityScore": 25,
+      "notes": "Short-form video platform. No editorial oversight.",
+      "warningFlags": ["user-generated", "no-editorial-oversight", "viral-misinformation-risk"],
+      "preferredUse": "Never as primary source"
+    },
+    "linkedin.com": {
+      "domain": "linkedin.com",
+      "category": "user-generated-social",
+      "baseQualityScore": 38,
+      "notes": "Professional social network. User-published content.",
+      "warningFlags": ["user-generated", "no-editorial-oversight"],
+      "preferredUse": "Identify the author; verify credentials"
+    },
+    "medium.com": {
+      "domain": "medium.com",
+      "category": "blog",
+      "baseQualityScore": 40,
+      "notes": "Open-publishing platform. No editorial vetting; quality varies by author.",
+      "warningFlags": ["user-generated", "no-editorial-oversight"],
+      "preferredUse": "Identify the author; verify credentials"
+    },
+    "substack.com": {
+      "domain": "substack.com",
+      "category": "blog",
+      "baseQualityScore": 38,
+      "notes": "Newsletter platform. No editorial vetting; quality varies by author.",
+      "warningFlags": ["user-generated", "no-editorial-oversight"],
+      "preferredUse": "Identify the author; verify credentials"
+    },
+    "blogspot.com": {
+      "domain": "blogspot.com",
+      "category": "blog",
+      "baseQualityScore": 25,
+      "notes": "Blog platform. No editorial vetting.",
+      "warningFlags": ["user-generated", "no-editorial-oversight"],
+      "preferredUse": "Identify the author; verify credentials"
+    },
+    "wordpress.com": {
+      "domain": "wordpress.com",
+      "category": "blog",
+      "baseQualityScore": 25,
+      "notes": "Blog platform. No editorial vetting.",
+      "warningFlags": ["user-generated", "no-editorial-oversight"],
+      "preferredUse": "Identify the author; verify credentials"
+    }
+  },
+
+  "tldRules": {
+    ".gov": {
+      "bonus": 15,
+      "category": "official-government",
+      "notes": "US government domain — restricted registration, primary source"
+    },
+    ".mil": {
+      "bonus": 15,
+      "category": "official-government",
+      "notes": "US military domain — restricted registration"
+    },
+    ".edu": {
+      "bonus": 12,
+      "category": "academic-research",
+      "notes": "US accredited educational institution"
+    },
+    ".int": {
+      "bonus": 10,
+      "category": "official-government",
+      "notes": "Intergovernmental treaty-based organization"
+    },
+    ".gc.ca": {
+      "bonus": 15,
+      "category": "official-government",
+      "notes": "Government of Canada"
+    },
+    ".gov.uk": {
+      "bonus": 15,
+      "category": "official-government",
+      "notes": "UK government"
+    },
+    ".org": {
+      "bonus": 3,
+      "category": null,
+      "notes": "Non-profit (registration not strictly verified)"
+    },
+    ".com": {
+      "bonus": 0,
+      "category": null,
+      "notes": "Commercial domain"
+    },
+    ".net": {
+      "bonus": 0,
+      "category": null,
+      "notes": "Network domain"
+    },
+    ".info": {
+      "bonus": -5,
+      "category": null,
+      "notes": "Often used for SEO / spam"
+    },
+    ".biz": {
+      "bonus": -5,
+      "category": null,
+      "notes": "Often used for commercial spam"
+    },
+    ".xyz": {
+      "bonus": -3,
+      "category": null,
+      "notes": "Cheap generic TLD, common in spam"
+    }
+  },
+
+  "warningFlagMeta": {
+    "primary-source":            { "tone": "good",    "label": "Primary source" },
+    "fact-checker":              { "tone": "good",    "label": "Dedicated fact-checker" },
+    "paywall":                   { "tone": "neutral", "label": "Paywall" },
+    "paywall-soft":              { "tone": "neutral", "label": "Soft paywall" },
+    "opinion-heavy":             { "tone": "neutral", "label": "Opinion-heavy outlet" },
+    "anonymous-bylines":         { "tone": "neutral", "label": "Anonymous bylines" },
+    "ideological-lean-left":     { "tone": "neutral", "label": "Editorial lean: left" },
+    "ideological-lean-right":    { "tone": "neutral", "label": "Editorial lean: right" },
+    "ideological-lean-libertarian":{ "tone": "neutral", "label": "Editorial lean: libertarian" },
+    "state-affiliated":          { "tone": "warn",    "label": "State-affiliated" },
+    "state-affiliated-public":   { "tone": "neutral", "label": "Public broadcaster" },
+    "political-framing":         { "tone": "warn",    "label": "Political framing" },
+    "blends-news-and-commentary":{ "tone": "warn",    "label": "Blends news + commentary" },
+    "speed-over-accuracy":       { "tone": "warn",    "label": "Speed > accuracy tradeoff" },
+    "sensationalism":            { "tone": "warn",    "label": "Sensationalist framing" },
+    "accuracy-disputed":         { "tone": "warn",    "label": "Documented accuracy issues" },
+    "celebrity-focus":           { "tone": "neutral", "label": "Celebrity focus" },
+    "pre-peer-review":           { "tone": "warn",    "label": "Pre-peer-review" },
+    "health-claims-unreviewed":  { "tone": "warn",    "label": "Unreviewed health claims" },
+    "abstracts-only":            { "tone": "neutral", "label": "Abstracts only" },
+    "verify-primary-sources":    { "tone": "neutral", "label": "Verify primary sources cited" },
+    "user-edited":               { "tone": "warn",    "label": "User-edited" },
+    "user-generated":            { "tone": "warn",    "label": "User-generated content" },
+    "no-editorial-oversight":    { "tone": "warn",    "label": "No editorial oversight" },
+    "viral-misinformation-risk": { "tone": "warn",    "label": "Viral-misinfo risk" },
+    "misinformation-history":    { "tone": "bad",     "label": "Documented misinformation history" },
+    "courts-found-defamation":   { "tone": "bad",     "label": "Court-found defamation history" },
+    "conspiracy":                { "tone": "bad",     "label": "Conspiracy framing" },
+    "health-misinformation":     { "tone": "bad",     "label": "Health misinformation history" },
+    "satire-warning":            { "tone": "bad",     "label": "SATIRE — not a factual source" },
+    "quality-varies":            { "tone": "neutral", "label": "Quality varies by market" }
+  }
+}
